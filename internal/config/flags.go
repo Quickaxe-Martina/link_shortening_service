@@ -2,11 +2,17 @@ package config
 
 import (
 	"flag"
+	"strings"
 )
 
 func ParseFlags() {
-
 	flag.StringVar(&FlagRunAddr, "a", ":8080", "address and port to run server")
-	flag.StringVar(&FlagServerAddr, "b", "http://localhost:8080/", "server address before short URL")
+	flag.Func("b", "server address before short URL", func(s string) error {
+		if !strings.HasSuffix(s, "/") {
+				s += "/"
+			}
+			FlagServerAddr = s
+			return nil
+		})
 	flag.Parse()
 }
