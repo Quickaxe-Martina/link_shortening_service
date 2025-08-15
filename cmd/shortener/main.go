@@ -11,20 +11,21 @@ import (
 	"net/http"
 )
 
-func setupRouter() *chi.Mux {
+func setupRouter(cfg *config.Config) *chi.Mux {
 	r := chi.NewRouter()
+	h := handler.NewHandler(cfg)
 	r.Use(middleware.Logger)
 	r.Route("/", func(r chi.Router) {
-		r.Get("/{URLCode}", handler.RedirectURL)
-		r.Post("/", handler.GenerateURL)
+		r.Get("/{URLCode}", h.RedirectURL)
+		r.Post("/", h.GenerateURL)
 	})
 	return r
 }
 
 func main() {
 	log.Println("Server started")
-	config.ParseFlags()
-	r := setupRouter()
+	cfg := config.ParseFlags()
+	r := setupRouter(cfg)
 
-	log.Fatal(http.ListenAndServe(config.FlagRunAddr, r))
+	log.Fatal(http.ListenAndServe(cfg.RunAddr, r))
 }

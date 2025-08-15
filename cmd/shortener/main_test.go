@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
-	"strings"
 	"testing"
 
 	"github.com/Quickaxe-Martina/link_shortening_service/internal/config"
@@ -14,10 +13,9 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-var createdCodes []string
-
 func TestGenerateURL(t *testing.T) {
-	router := setupRouter()
+	cfg := config.NewConfig(":8080", "http://localhost:8080/")
+	router := setupRouter(cfg)
 	srv := httptest.NewServer(router)
 	defer srv.Close()
 
@@ -35,14 +33,8 @@ func TestGenerateURL(t *testing.T) {
 			contentType: "text/plain",
 			body:        "https://example.com",
 			wantStatus:  http.StatusCreated,
-			wantPrefix:  config.FlagServerAddr,
+			wantPrefix:  cfg.ServerAddr,
 		},
-		// {
-		// 	name:        "неверный Content-Type",
-		// 	contentType: "application/json",
-		// 	body:        "https://example.com",
-		// 	wantStatus:  http.StatusBadRequest,
-		// },
 		{
 			name:        "пустое тело",
 			contentType: "text/plain",
@@ -59,27 +51,21 @@ func TestGenerateURL(t *testing.T) {
 			assert.NoError(t, err)
 			assert.Equal(t, tt.wantStatus, resp.StatusCode())
 			if tt.wantStatus == http.StatusCreated {
-				assert.Contains(t, resp.String(), config.FlagServerAddr)
-				// Сохраняем код для TestRedirectURL
-				code := strings.TrimPrefix(resp.String(), config.FlagServerAddr)
-				createdCodes = append(createdCodes, code)
+				assert.Contains(t, resp.String(), cfg.ServerAddr)
 			}
 		})
 	}
 }
 
 func TestRedirectURL(t *testing.T) {
-	router := setupRouter()
+	cfg := config.NewConfig(":8080", "http://localhost:8080/")
+	cfg.URLData["qwerty"] = "https://example.com"
+	router := setupRouter(cfg)
 	srv := httptest.NewServer(router)
 	defer srv.Close()
 
 	client := resty.New()
 	client.SetRedirectPolicy(resty.NoRedirectPolicy())
-
-	for _, code := range createdCodes {
-		config.URLData[code] = "https://example.com"
-	}
-	log.Printf("createdCodes[0]: %s", string(createdCodes[0]))
 
 	tests := []struct {
 		name       string
@@ -89,7 +75,7 @@ func TestRedirectURL(t *testing.T) {
 	}{
 		{
 			name:       "успешный редирект",
-			path:       "/" + createdCodes[0],
+			path:       "/qwerty",
 			wantStatus: http.StatusTemporaryRedirect,
 			wantLoc:    "https://example.com",
 		},
