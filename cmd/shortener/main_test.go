@@ -13,7 +13,7 @@ import (
 
 var createdCodes []string
 
-func TestGenerateUrl(t *testing.T) {
+func TestGenerateURL(t *testing.T) {
 	tests := []struct {
 		name        string
 		contentType string
@@ -48,7 +48,7 @@ func TestGenerateUrl(t *testing.T) {
 			req.Header.Set("Content-Type", tt.contentType)
 			w := httptest.NewRecorder()
 
-			generateUrl(w, req)
+			generateURL(w, req)
 
 			res := w.Result()
 			defer res.Body.Close()
@@ -68,9 +68,9 @@ func TestGenerateUrl(t *testing.T) {
 	}
 }
 
-func TestRedirectUrl(t *testing.T) {
+func TestRedirectURL(t *testing.T) {
 	for _, code := range createdCodes {
-		urlData[code] = "https://example.com"
+		URLData[code] = "https://example.com"
 	}
 
 	tests := []struct {
@@ -102,7 +102,7 @@ func TestRedirectUrl(t *testing.T) {
 			req := httptest.NewRequest(http.MethodGet, tt.path, nil)
 			w := httptest.NewRecorder()
 
-			redirectUrl(w, req)
+			redirectURL(w, req)
 
 			res := w.Result()
 			defer res.Body.Close()

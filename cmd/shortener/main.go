@@ -10,7 +10,7 @@ import (
 )
 
 const hostname = "http://localhost:8080/" // TODO: вынести в env
-var urlData = make(map[string]string)     // TODO: БД в следующем спринте видимо?
+var URLData = make(map[string]string)     // TODO: БД в следующем спринте видимо?
 const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
 
 func generateRandomString(length int) string {
@@ -30,25 +30,25 @@ func loggingMiddleware(next http.Handler) http.Handler {
 	})
 }
 
-func generateUrl(w http.ResponseWriter, r *http.Request) {
+func generateURL(w http.ResponseWriter, r *http.Request) {
 	body, err := io.ReadAll(r.Body)
 	if err != nil || len(body) == 0 {
 		http.Error(w, "Bad Request", http.StatusBadRequest)
 		return
 	}
-	urlCode := generateRandomString(6)
-	log.Printf("Url code: %s", urlCode)
-	urlData[urlCode] = string(body)
+	URLCode := generateRandomString(6)
+	log.Printf("URL code: %s", URLCode)
+	URLData[URLCode] = string(body)
 	w.WriteHeader(http.StatusCreated)
-	w.Write([]byte(hostname + urlCode))
+	w.Write([]byte(hostname + URLCode))
 }
 
-func redirectUrl(w http.ResponseWriter, r *http.Request) {
-	urlCode := strings.TrimPrefix(r.URL.Path, "/")
-	if len(urlCode) == 0 {
+func redirectURL(w http.ResponseWriter, r *http.Request) {
+	URLCode := strings.TrimPrefix(r.URL.Path, "/")
+	if len(URLCode) == 0 {
 		http.Error(w, "Bad Request", http.StatusBadRequest)
 	}
-	originalURL, exists := urlData[urlCode]
+	originalURL, exists := URLData[URLCode]
 	if !exists {
 		http.Error(w, "Bad Request", http.StatusBadRequest)
 		return
@@ -60,9 +60,9 @@ func redirectUrl(w http.ResponseWriter, r *http.Request) {
 func mainPage(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodPost:
-		generateUrl(w, r)
+		generateURL(w, r)
 	case http.MethodGet:
-		redirectUrl(w, r)
+		redirectURL(w, r)
 	default:
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 	}
