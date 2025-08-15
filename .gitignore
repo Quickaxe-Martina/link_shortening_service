@@ -4,7 +4,9 @@
 *.dll
 *.so
 *.dylib
+cmd/shortener/shortenertestbeta
 cmd/shortener/shortenertest
+cmd/shortener/tests.sh
 # Test binary, built with `go test -c`
 *.test
 
