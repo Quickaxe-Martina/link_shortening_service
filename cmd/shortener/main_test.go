@@ -1,19 +1,27 @@
 package main
 
 import (
-	"io"
+	"errors"
+	"log"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"strings"
 	"testing"
 
+	"github.com/go-resty/resty/v2"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 var createdCodes []string
 
 func TestGenerateURL(t *testing.T) {
+	router := setupRouter()
+	srv := httptest.NewServer(router)
+	defer srv.Close()
+
+	client := resty.New()
+
 	tests := []struct {
 		name        string
 		contentType string
@@ -44,24 +52,15 @@ func TestGenerateURL(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			req := httptest.NewRequest(http.MethodPost, "/", strings.NewReader(tt.body))
-			req.Header.Set("Content-Type", tt.contentType)
-			w := httptest.NewRecorder()
-
-			generateURL(w, req)
-
-			res := w.Result()
-			defer res.Body.Close()
-
-			assert.Equal(t, tt.wantStatus, res.StatusCode)
-
-			if tt.wantPrefix != "" && res.StatusCode == http.StatusCreated {
-				data, err := io.ReadAll(res.Body)
-				require.NoError(t, err)
-				assert.True(t, strings.HasPrefix(string(data), tt.wantPrefix))
-
-				// Сохраняем код для дальнейшего теста
-				code := strings.TrimPrefix(string(data), hostname)
+			resp, err := client.R().
+				SetBody(tt.body).
+				Post(srv.URL + "/")
+			assert.NoError(t, err)
+			assert.Equal(t, tt.wantStatus, resp.StatusCode())
+			if tt.wantStatus == http.StatusCreated {
+				assert.Contains(t, resp.String(), hostname)
+				// Сохраняем код для TestRedirectURL
+				code := strings.TrimPrefix(resp.String(), hostname)
 				createdCodes = append(createdCodes, code)
 			}
 		})
@@ -69,9 +68,17 @@ func TestGenerateURL(t *testing.T) {
 }
 
 func TestRedirectURL(t *testing.T) {
+	router := setupRouter()
+	srv := httptest.NewServer(router)
+	defer srv.Close()
+
+	client := resty.New()
+	client.SetRedirectPolicy(resty.NoRedirectPolicy())
+
 	for _, code := range createdCodes {
 		URLData[code] = "https://example.com"
 	}
+	log.Printf("createdCodes[0]: %s", string(createdCodes[0]))
 
 	tests := []struct {
 		name       string
@@ -88,7 +95,7 @@ func TestRedirectURL(t *testing.T) {
 		{
 			name:       "пустой код",
 			path:       "/",
-			wantStatus: http.StatusBadRequest,
+			wantStatus: http.StatusMethodNotAllowed,
 		},
 		{
 			name:       "неизвестный код",
@@ -99,17 +106,18 @@ func TestRedirectURL(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			req := httptest.NewRequest(http.MethodGet, tt.path, nil)
-			w := httptest.NewRecorder()
+			log.Printf("url: %s", srv.URL+tt.path)
+			resp, err := client.R().
+				Get(srv.URL + tt.path)
 
-			redirectURL(w, req)
-
-			res := w.Result()
-			defer res.Body.Close()
-
-			assert.Equal(t, tt.wantStatus, res.StatusCode)
+			var urlErr *url.Error
+			if err != nil && !(errors.As(err, &urlErr) && urlErr.Err.Error() == "auto redirect is disabled") {
+				log.Printf("err.Error(): %s", err.Error())
+				assert.NoError(t, err)
+			}
+			assert.Equal(t, tt.wantStatus, resp.StatusCode())
 			if tt.wantLoc != "" {
-				assert.Equal(t, tt.wantLoc, res.Header.Get("Location"))
+				assert.Equal(t, tt.wantLoc, resp.Header().Get("Location"))
 			}
 		})
 	}

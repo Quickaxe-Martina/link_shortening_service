@@ -1,12 +1,12 @@
 package main
 
 import (
+	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
 	"io"
 	"log"
 	"math/rand"
 	"net/http"
-	"strings"
-	"time"
 )
 
 const hostname = "http://localhost:8080/" // TODO: вынести в env
@@ -19,15 +19,6 @@ func generateRandomString(length int) string {
 		result[i] = charset[rand.Intn(len(charset))]
 	}
 	return string(result)
-}
-
-func loggingMiddleware(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		start := time.Now()
-		log.Printf("🚀 Старт обработки %s %s", r.Method, r.URL.Path)
-		next.ServeHTTP(w, r)
-		log.Printf("🏁 Завершено за %v", time.Since(start))
-	})
 }
 
 func generateURL(w http.ResponseWriter, r *http.Request) {
@@ -44,9 +35,10 @@ func generateURL(w http.ResponseWriter, r *http.Request) {
 }
 
 func redirectURL(w http.ResponseWriter, r *http.Request) {
-	URLCode := strings.TrimPrefix(r.URL.Path, "/")
+	URLCode := chi.URLParam(r, "URLCode")
 	if len(URLCode) == 0 {
-		http.Error(w, "Bad Request", http.StatusBadRequest)
+		log.Println("URLCode is empty")
+		http.Error(w, "URLCode is empty", http.StatusBadRequest)
 	}
 	originalURL, exists := URLData[URLCode]
 	if !exists {
@@ -57,26 +49,19 @@ func redirectURL(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusTemporaryRedirect)
 }
 
-func mainPage(w http.ResponseWriter, r *http.Request) {
-	switch r.Method {
-	case http.MethodPost:
-		generateURL(w, r)
-	case http.MethodGet:
-		redirectURL(w, r)
-	default:
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-	}
+func setupRouter() *chi.Mux {
+	r := chi.NewRouter()
+	r.Use(middleware.Logger)
+	r.Route("/", func(r chi.Router) {
+		r.Get("/{URLCode}", redirectURL)
+		r.Post("/", generateURL)
+	})
+	return r
 }
 
 func main() {
 	log.Println("Server started")
-	mux := http.NewServeMux()
-	mux.HandleFunc(`/`, mainPage)
+	r := setupRouter()
 
-	loggedMux := loggingMiddleware(mux)
-
-	err := http.ListenAndServe(`:8080`, loggedMux)
-	if err != nil {
-		panic(err)
-	}
+	log.Fatal(http.ListenAndServe("localhost:8080", r))
 }
