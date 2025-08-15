@@ -9,6 +9,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/Quickaxe-Martina/link_shortening_service/internal/config"
 	"github.com/go-resty/resty/v2"
 	"github.com/stretchr/testify/assert"
 )
@@ -34,7 +35,7 @@ func TestGenerateURL(t *testing.T) {
 			contentType: "text/plain",
 			body:        "https://example.com",
 			wantStatus:  http.StatusCreated,
-			wantPrefix:  hostname,
+			wantPrefix:  config.FlagServerAddr,
 		},
 		// {
 		// 	name:        "неверный Content-Type",
@@ -58,9 +59,9 @@ func TestGenerateURL(t *testing.T) {
 			assert.NoError(t, err)
 			assert.Equal(t, tt.wantStatus, resp.StatusCode())
 			if tt.wantStatus == http.StatusCreated {
-				assert.Contains(t, resp.String(), hostname)
+				assert.Contains(t, resp.String(), config.FlagServerAddr)
 				// Сохраняем код для TestRedirectURL
-				code := strings.TrimPrefix(resp.String(), hostname)
+				code := strings.TrimPrefix(resp.String(), config.FlagServerAddr)
 				createdCodes = append(createdCodes, code)
 			}
 		})
@@ -76,7 +77,7 @@ func TestRedirectURL(t *testing.T) {
 	client.SetRedirectPolicy(resty.NoRedirectPolicy())
 
 	for _, code := range createdCodes {
-		URLData[code] = "https://example.com"
+		config.URLData[code] = "https://example.com"
 	}
 	log.Printf("createdCodes[0]: %s", string(createdCodes[0]))
 
