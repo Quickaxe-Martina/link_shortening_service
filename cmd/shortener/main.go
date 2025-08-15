@@ -31,10 +31,6 @@ func loggingMiddleware(next http.Handler) http.Handler {
 }
 
 func generateUrl(w http.ResponseWriter, r *http.Request) {
-	if r.Header.Get("Content-Type") != "text/plain" {
-		http.Error(w, "Bad Request", http.StatusBadRequest)
-		return
-	}
 	body, err := io.ReadAll(r.Body)
 	if err != nil || len(body) == 0 {
 		http.Error(w, "Bad Request", http.StatusBadRequest)
@@ -73,6 +69,7 @@ func mainPage(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
+	log.Println("Server started")
 	mux := http.NewServeMux()
 	mux.HandleFunc(`/`, mainPage)
 
