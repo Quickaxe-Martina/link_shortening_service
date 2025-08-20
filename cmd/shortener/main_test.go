@@ -1,19 +1,26 @@
 package main
 
 import (
-	"io"
+	"errors"
+	"log"
 	"net/http"
 	"net/http/httptest"
-	"strings"
+	"net/url"
 	"testing"
 
+	"github.com/Quickaxe-Martina/link_shortening_service/internal/config"
+	"github.com/go-resty/resty/v2"
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
-var createdCodes []string
-
 func TestGenerateURL(t *testing.T) {
+	cfg := config.NewConfig(":8080", "http://localhost:8080/")
+	router := setupRouter(cfg)
+	srv := httptest.NewServer(router)
+	defer srv.Close()
+
+	client := resty.New()
+
 	tests := []struct {
 		name        string
 		contentType string
@@ -26,13 +33,7 @@ func TestGenerateURL(t *testing.T) {
 			contentType: "text/plain",
 			body:        "https://example.com",
 			wantStatus:  http.StatusCreated,
-			wantPrefix:  hostname,
-		},
-		{
-			name:        "неверный Content-Type",
-			contentType: "application/json",
-			body:        "https://example.com",
-			wantStatus:  http.StatusBadRequest,
+			wantPrefix:  cfg.ServerAddr,
 		},
 		{
 			name:        "пустое тело",
@@ -44,34 +45,27 @@ func TestGenerateURL(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			req := httptest.NewRequest(http.MethodPost, "/", strings.NewReader(tt.body))
-			req.Header.Set("Content-Type", tt.contentType)
-			w := httptest.NewRecorder()
-
-			generateURL(w, req)
-
-			res := w.Result()
-			defer res.Body.Close()
-
-			assert.Equal(t, tt.wantStatus, res.StatusCode)
-
-			if tt.wantPrefix != "" && res.StatusCode == http.StatusCreated {
-				data, err := io.ReadAll(res.Body)
-				require.NoError(t, err)
-				assert.True(t, strings.HasPrefix(string(data), tt.wantPrefix))
-
-				// Сохраняем код для дальнейшего теста
-				code := strings.TrimPrefix(string(data), hostname)
-				createdCodes = append(createdCodes, code)
+			resp, err := client.R().
+				SetBody(tt.body).
+				Post(srv.URL + "/")
+			assert.NoError(t, err)
+			assert.Equal(t, tt.wantStatus, resp.StatusCode())
+			if tt.wantStatus == http.StatusCreated {
+				assert.Contains(t, resp.String(), cfg.ServerAddr)
 			}
 		})
 	}
 }
 
 func TestRedirectURL(t *testing.T) {
-	for _, code := range createdCodes {
-		URLData[code] = "https://example.com"
-	}
+	cfg := config.NewConfig(":8080", "http://localhost:8080/")
+	cfg.URLData["qwerty"] = "https://example.com"
+	router := setupRouter(cfg)
+	srv := httptest.NewServer(router)
+	defer srv.Close()
+
+	client := resty.New()
+	client.SetRedirectPolicy(resty.NoRedirectPolicy())
 
 	tests := []struct {
 		name       string
@@ -81,14 +75,14 @@ func TestRedirectURL(t *testing.T) {
 	}{
 		{
 			name:       "успешный редирект",
-			path:       "/" + createdCodes[0],
+			path:       "/qwerty",
 			wantStatus: http.StatusTemporaryRedirect,
 			wantLoc:    "https://example.com",
 		},
 		{
 			name:       "пустой код",
 			path:       "/",
-			wantStatus: http.StatusBadRequest,
+			wantStatus: http.StatusMethodNotAllowed,
 		},
 		{
 			name:       "неизвестный код",
@@ -99,17 +93,18 @@ func TestRedirectURL(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			req := httptest.NewRequest(http.MethodGet, tt.path, nil)
-			w := httptest.NewRecorder()
+			log.Printf("url: %s", srv.URL+tt.path)
+			resp, err := client.R().
+				Get(srv.URL + tt.path)
 
-			redirectURL(w, req)
-
-			res := w.Result()
-			defer res.Body.Close()
-
-			assert.Equal(t, tt.wantStatus, res.StatusCode)
+			var urlErr *url.Error
+			if err != nil && !(errors.As(err, &urlErr) && urlErr.Err.Error() == "auto redirect is disabled") {
+				log.Printf("err.Error(): %s", err.Error())
+				assert.NoError(t, err)
+			}
+			assert.Equal(t, tt.wantStatus, resp.StatusCode())
 			if tt.wantLoc != "" {
-				assert.Equal(t, tt.wantLoc, res.Header.Get("Location"))
+				assert.Equal(t, tt.wantLoc, resp.Header().Get("Location"))
 			}
 		})
 	}

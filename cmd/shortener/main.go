@@ -1,82 +1,31 @@
 package main
 
 import (
-	"io"
+	"github.com/Quickaxe-Martina/link_shortening_service/internal/config"
+	"github.com/Quickaxe-Martina/link_shortening_service/internal/handler"
+	"github.com/go-chi/chi/v5"
+	"github.com/go-chi/chi/v5/middleware"
+
 	"log"
-	"math/rand"
+
 	"net/http"
-	"strings"
-	"time"
 )
 
-const hostname = "http://localhost:8080/" // TODO: вынести в env
-var URLData = make(map[string]string)     // TODO: БД в следующем спринте видимо?
-const charset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
-
-func generateRandomString(length int) string {
-	result := make([]byte, length)
-	for i := range result {
-		result[i] = charset[rand.Intn(len(charset))]
-	}
-	return string(result)
-}
-
-func loggingMiddleware(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		start := time.Now()
-		log.Printf("🚀 Старт обработки %s %s", r.Method, r.URL.Path)
-		next.ServeHTTP(w, r)
-		log.Printf("🏁 Завершено за %v", time.Since(start))
+func setupRouter(cfg *config.Config) *chi.Mux {
+	r := chi.NewRouter()
+	h := handler.NewHandler(cfg)
+	r.Use(middleware.Logger)
+	r.Route("/", func(r chi.Router) {
+		r.Get("/{URLCode}", h.RedirectURL)
+		r.Post("/", h.GenerateURL)
 	})
-}
-
-func generateURL(w http.ResponseWriter, r *http.Request) {
-	body, err := io.ReadAll(r.Body)
-	if err != nil || len(body) == 0 {
-		http.Error(w, "Bad Request", http.StatusBadRequest)
-		return
-	}
-	URLCode := generateRandomString(6)
-	log.Printf("URL code: %s", URLCode)
-	URLData[URLCode] = string(body)
-	w.WriteHeader(http.StatusCreated)
-	w.Write([]byte(hostname + URLCode))
-}
-
-func redirectURL(w http.ResponseWriter, r *http.Request) {
-	URLCode := strings.TrimPrefix(r.URL.Path, "/")
-	if len(URLCode) == 0 {
-		http.Error(w, "Bad Request", http.StatusBadRequest)
-	}
-	originalURL, exists := URLData[URLCode]
-	if !exists {
-		http.Error(w, "Bad Request", http.StatusBadRequest)
-		return
-	}
-	w.Header().Set("Location", originalURL)
-	w.WriteHeader(http.StatusTemporaryRedirect)
-}
-
-func mainPage(w http.ResponseWriter, r *http.Request) {
-	switch r.Method {
-	case http.MethodPost:
-		generateURL(w, r)
-	case http.MethodGet:
-		redirectURL(w, r)
-	default:
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-	}
+	return r
 }
 
 func main() {
 	log.Println("Server started")
-	mux := http.NewServeMux()
-	mux.HandleFunc(`/`, mainPage)
+	cfg := config.ParseFlags()
+	r := setupRouter(cfg)
 
-	loggedMux := loggingMiddleware(mux)
-
-	err := http.ListenAndServe(`:8080`, loggedMux)
-	if err != nil {
-		panic(err)
-	}
+	log.Fatal(http.ListenAndServe(cfg.RunAddr, r))
 }
