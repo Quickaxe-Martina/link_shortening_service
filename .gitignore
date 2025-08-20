@@ -4,7 +4,7 @@
 *.dll
 *.so
 *.dylib
-
+cmd/shortener/shortenertest
 # Test binary, built with `go test -c`
 *.test
 
