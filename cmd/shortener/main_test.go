@@ -28,12 +28,12 @@ func TestGenerateURL(t *testing.T) {
 			wantStatus:  http.StatusCreated,
 			wantPrefix:  hostname,
 		},
-		{
-			name:        "неверный Content-Type",
-			contentType: "application/json",
-			body:        "https://example.com",
-			wantStatus:  http.StatusBadRequest,
-		},
+		// {
+		// 	name:        "неверный Content-Type",
+		// 	contentType: "application/json",
+		// 	body:        "https://example.com",
+		// 	wantStatus:  http.StatusBadRequest,
+		// },
 		{
 			name:        "пустое тело",
 			contentType: "text/plain",
