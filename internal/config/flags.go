@@ -21,11 +21,11 @@ func ParseFlags(cfg *Config, onlyEmpty bool) {
 		serverAddr = s
 		return nil
 	})
+	flag.Parse()
 	if onlyEmpty && cfg.RunAddr == "" {
 		cfg.RunAddr = runAddr
 	}
 	if onlyEmpty && cfg.ServerAddr == "" {
 		cfg.ServerAddr = serverAddr
 	}
-	flag.Parse()
 }

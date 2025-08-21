@@ -23,4 +23,3 @@ func NewConfig() *Config {
 	log.Println(cfg)
 	return &cfg
 }
-
