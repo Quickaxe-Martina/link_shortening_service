@@ -24,7 +24,7 @@ func setupRouter(cfg *config.Config) *chi.Mux {
 
 func main() {
 	log.Println("Server started")
-	cfg := config.ParseFlags()
+	cfg := config.NewConfig()
 	r := setupRouter(cfg)
 
 	log.Fatal(http.ListenAndServe(cfg.RunAddr, r))

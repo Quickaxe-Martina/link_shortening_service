@@ -14,7 +14,11 @@ import (
 )
 
 func TestGenerateURL(t *testing.T) {
-	cfg := config.NewConfig(":8080", "http://localhost:8080/")
+	cfg := &config.Config{
+		RunAddr:    ":8080",
+		ServerAddr: "http://localhost:8080/",
+		URLData:    make(map[string]string),
+	}
 	router := setupRouter(cfg)
 	srv := httptest.NewServer(router)
 	defer srv.Close()
@@ -58,7 +62,11 @@ func TestGenerateURL(t *testing.T) {
 }
 
 func TestRedirectURL(t *testing.T) {
-	cfg := config.NewConfig(":8080", "http://localhost:8080/")
+	cfg := &config.Config{
+		RunAddr:    ":8080",
+		ServerAddr: "http://localhost:8080/",
+		URLData:    make(map[string]string),
+	}
 	cfg.URLData["qwerty"] = "https://example.com"
 	router := setupRouter(cfg)
 	srv := httptest.NewServer(router)
