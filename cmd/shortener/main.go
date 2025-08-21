@@ -1,20 +1,21 @@
 package main
 
 import (
+	"log"
+	"net/http"
+
 	"github.com/Quickaxe-Martina/link_shortening_service/internal/config"
 	"github.com/Quickaxe-Martina/link_shortening_service/internal/handler"
+	"github.com/Quickaxe-Martina/link_shortening_service/internal/logger"
 	"github.com/go-chi/chi/v5"
-	"github.com/go-chi/chi/v5/middleware"
-
-	"log"
-
-	"net/http"
+	"go.uber.org/zap"
 )
 
 func setupRouter(cfg *config.Config) *chi.Mux {
 	r := chi.NewRouter()
 	h := handler.NewHandler(cfg)
-	r.Use(middleware.Logger)
+
+	r.Use(logger.RequestLogger)
 	r.Route("/", func(r chi.Router) {
 		r.Get("/{URLCode}", h.RedirectURL)
 		r.Post("/", h.GenerateURL)
@@ -23,9 +24,12 @@ func setupRouter(cfg *config.Config) *chi.Mux {
 }
 
 func main() {
-	log.Println("Server started")
 	cfg := config.NewConfig()
+
+	if err := logger.Initialize("info"); err != nil {
+		log.Panic(err)
+	}
 	r := setupRouter(cfg)
 
-	log.Fatal(http.ListenAndServe(cfg.RunAddr, r))
+	logger.Log.Fatal("", zap.Error(http.ListenAndServe(cfg.RunAddr, r)))
 }

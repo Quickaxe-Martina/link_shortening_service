@@ -1,9 +1,5 @@
 package config
 
-import (
-	"log"
-)
-
 // Config variables
 type Config struct {
 	RunAddr    string `env:"SERVER_ADDRESS"`
@@ -20,6 +16,5 @@ func NewConfig() *Config {
 	}
 	LoadEnv(&cfg)
 	ParseFlags(&cfg, true)
-	log.Println(cfg)
 	return &cfg
 }

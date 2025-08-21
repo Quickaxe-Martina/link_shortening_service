@@ -2,10 +2,11 @@ package handler
 
 import (
 	"io"
-	"log"
 	"net/http"
 
+	"github.com/Quickaxe-Martina/link_shortening_service/internal/logger"
 	"github.com/Quickaxe-Martina/link_shortening_service/internal/service"
+	"go.uber.org/zap"
 )
 
 // GenerateURL handles HTTP requests to create a shortened URL.
@@ -20,7 +21,7 @@ func (h *Handler) GenerateURL(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
-	log.Printf("URL code: %s", URLCode)
+	logger.Log.Info("URL code", zap.String("URLCode", URLCode))
 	h.cfg.URLData[URLCode] = string(body)
 	w.WriteHeader(http.StatusCreated)
 	w.Write([]byte(h.cfg.ServerAddr + URLCode))
