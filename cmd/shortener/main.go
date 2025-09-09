@@ -16,6 +16,7 @@ func setupRouter(cfg *config.Config) *chi.Mux {
 	h := handler.NewHandler(cfg)
 
 	r.Use(logger.RequestLogger)
+	r.Use(handler.GzipMiddleware)
 	r.Route("/", func(r chi.Router) {
 		r.Get("/{URLCode}", h.RedirectURL)
 		r.Post("/", h.GenerateURL)
