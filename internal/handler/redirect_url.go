@@ -15,7 +15,7 @@ func (h *Handler) RedirectURL(w http.ResponseWriter, r *http.Request) {
 		logger.Log.Info("URLCode is empty")
 		http.Error(w, "URLCode is empty", http.StatusBadRequest)
 	}
-	originalURL, exists := h.cfg.URLData[URLCode]
+	originalURL, exists := h.storageData.URLData[URLCode]
 	if !exists {
 		http.Error(w, "Bad Request", http.StatusBadRequest)
 		return

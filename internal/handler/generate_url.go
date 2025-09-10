@@ -24,7 +24,7 @@ func (h *Handler) GenerateURL(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	logger.Log.Info("URL code", zap.String("URLCode", URLCode))
-	h.cfg.URLData[URLCode] = string(body)
+	h.storageData.URLData[URLCode] = string(body)
 	w.WriteHeader(http.StatusCreated)
 	w.Write([]byte(h.cfg.ServerAddr + URLCode))
 }
@@ -51,7 +51,7 @@ func (h *Handler) JSONGenerateURL(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	logger.Log.Info("URL code", zap.String("URLCode", URLCode))
-	h.cfg.URLData[URLCode] = req.URL
+	h.storageData.URLData[URLCode] = req.URL
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)

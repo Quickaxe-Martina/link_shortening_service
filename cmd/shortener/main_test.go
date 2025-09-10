@@ -11,6 +11,7 @@ import (
 
 	"github.com/Quickaxe-Martina/link_shortening_service/internal/config"
 	"github.com/Quickaxe-Martina/link_shortening_service/internal/model"
+	"github.com/Quickaxe-Martina/link_shortening_service/internal/storage"
 	"github.com/go-resty/resty/v2"
 	"github.com/stretchr/testify/assert"
 )
@@ -19,9 +20,9 @@ func TestGenerateURL(t *testing.T) {
 	cfg := &config.Config{
 		RunAddr:    ":8080",
 		ServerAddr: "http://localhost:8080/",
-		URLData:    make(map[string]string),
 	}
-	router := setupRouter(cfg)
+	storageData := storage.NewStorage()
+	router := setupRouter(cfg, storageData)
 	srv := httptest.NewServer(router)
 	defer srv.Close()
 
@@ -67,10 +68,10 @@ func TestRedirectURL(t *testing.T) {
 	cfg := &config.Config{
 		RunAddr:    ":8080",
 		ServerAddr: "http://localhost:8080/",
-		URLData:    make(map[string]string),
 	}
-	cfg.URLData["qwerty"] = "https://example.com"
-	router := setupRouter(cfg)
+	storageData := storage.NewStorage()
+	storageData.URLData["qwerty"] = "https://example.com"
+	router := setupRouter(cfg, storageData)
 	srv := httptest.NewServer(router)
 	defer srv.Close()
 
@@ -124,9 +125,9 @@ func TestJSONGenerateURL(t *testing.T) {
 	cfg := &config.Config{
 		RunAddr:    ":8080",
 		ServerAddr: "http://localhost:8080/",
-		URLData:    make(map[string]string),
 	}
-	router := setupRouter(cfg)
+	storageData := storage.NewStorage()
+	router := setupRouter(cfg, storageData)
 	srv := httptest.NewServer(router)
 	defer srv.Close()
 
