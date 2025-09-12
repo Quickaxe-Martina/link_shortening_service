@@ -20,6 +20,9 @@ func setupRouter(cfg *config.Config) *chi.Mux {
 		r.Get("/{URLCode}", h.RedirectURL)
 		r.Post("/", h.GenerateURL)
 	})
+	r.Route("/api/shorten", func(r chi.Router) {
+		r.Post("/", h.JSONGenerateURL)
+	})
 	return r
 }
 
