@@ -3,17 +3,21 @@ package main
 import (
 	"log"
 	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
 
 	"github.com/Quickaxe-Martina/link_shortening_service/internal/config"
 	"github.com/Quickaxe-Martina/link_shortening_service/internal/handler"
 	"github.com/Quickaxe-Martina/link_shortening_service/internal/logger"
+	"github.com/Quickaxe-Martina/link_shortening_service/internal/storage"
 	"github.com/go-chi/chi/v5"
 	"go.uber.org/zap"
 )
 
-func setupRouter(cfg *config.Config) *chi.Mux {
+func setupRouter(cfg *config.Config, storageData *storage.Storage) *chi.Mux {
 	r := chi.NewRouter()
-	h := handler.NewHandler(cfg)
+	h := handler.NewHandler(cfg, storageData)
 
 	r.Use(logger.RequestLogger)
 	r.Use(handler.GzipMiddleware)
@@ -29,11 +33,22 @@ func setupRouter(cfg *config.Config) *chi.Mux {
 
 func main() {
 	cfg := config.NewConfig()
+	storageData := storage.NewStorage()
+	storage.LoadData(cfg.DataFilePath, storageData)
 
 	if err := logger.Initialize("info"); err != nil {
 		log.Panic(err)
 	}
-	r := setupRouter(cfg)
+	r := setupRouter(cfg, storageData)
+
+	// Обработчик завершения (Ctrl+C, SIGTERM и т.п.)
+	go func() {
+		ch := make(chan os.Signal, 1)
+		signal.Notify(ch, syscall.SIGINT, syscall.SIGTERM)
+		<-ch
+		storage.SaveData(cfg.DataFilePath, storageData)
+		os.Exit(0)
+	}()
 
 	logger.Log.Fatal("", zap.Error(http.ListenAndServe(cfg.RunAddr, r)))
 }

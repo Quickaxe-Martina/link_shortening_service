@@ -9,8 +9,10 @@ import (
 func ParseFlags(cfg *Config, onlyEmpty bool) {
 	var runAddr string
 	var serverAddr = "http://localhost:8080/"
+	var dataFilePath string
 
 	flag.StringVar(&runAddr, "a", ":8080", "address and port to run server")
+	flag.StringVar(&dataFilePath, "f", "./data.json", "saved urls path")
 	flag.Func("b", "server address before short URL", func(s string) error {
 		if len(s) == 0 {
 			return nil
@@ -27,5 +29,8 @@ func ParseFlags(cfg *Config, onlyEmpty bool) {
 	}
 	if onlyEmpty && cfg.ServerAddr == "" {
 		cfg.ServerAddr = serverAddr
+	}
+	if onlyEmpty && cfg.DataFilePath == "" {
+		cfg.DataFilePath = dataFilePath
 	}
 }
