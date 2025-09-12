@@ -6,7 +6,7 @@ import (
 )
 
 // ParseFlags parses command-line flags to configure the server's runtime parameters.
-func ParseFlags() *Config {
+func ParseFlags(cfg *Config, onlyEmpty bool) {
 	var runAddr string
 	var serverAddr = "http://localhost:8080/"
 
@@ -22,6 +22,10 @@ func ParseFlags() *Config {
 		return nil
 	})
 	flag.Parse()
-	cfg := NewConfig(runAddr, serverAddr)
-	return cfg
+	if onlyEmpty && cfg.RunAddr == "" {
+		cfg.RunAddr = runAddr
+	}
+	if onlyEmpty && cfg.ServerAddr == "" {
+		cfg.ServerAddr = serverAddr
+	}
 }
