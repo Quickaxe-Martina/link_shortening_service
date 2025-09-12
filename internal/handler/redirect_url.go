@@ -1,8 +1,9 @@
 package handler
 
 import (
-	"log"
 	"net/http"
+
+	"github.com/Quickaxe-Martina/link_shortening_service/internal/logger"
 
 	"github.com/go-chi/chi/v5"
 )
@@ -11,7 +12,7 @@ import (
 func (h *Handler) RedirectURL(w http.ResponseWriter, r *http.Request) {
 	URLCode := chi.URLParam(r, "URLCode")
 	if len(URLCode) == 0 {
-		log.Println("URLCode is empty")
+		logger.Log.Info("URLCode is empty")
 		http.Error(w, "URLCode is empty", http.StatusBadRequest)
 	}
 	originalURL, exists := h.cfg.URLData[URLCode]
