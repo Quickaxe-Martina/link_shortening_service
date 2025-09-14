@@ -1,7 +1,9 @@
 package handler
 
 import (
+	"context"
 	"net/http"
+	"time"
 
 	"github.com/Quickaxe-Martina/link_shortening_service/internal/logger"
 
@@ -15,11 +17,13 @@ func (h *Handler) RedirectURL(w http.ResponseWriter, r *http.Request) {
 		logger.Log.Info("URLCode is empty")
 		http.Error(w, "URLCode is empty", http.StatusBadRequest)
 	}
-	originalURL, exists := h.storageData.URLData[URLCode]
-	if !exists {
+	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+	defer cancel()
+	url, err := h.store.GetURL(ctx, URLCode)
+	if err != nil {
 		http.Error(w, "Bad Request", http.StatusBadRequest)
 		return
 	}
-	w.Header().Set("Location", originalURL)
+	w.Header().Set("Location", url.URL)
 	w.WriteHeader(http.StatusTemporaryRedirect)
 }

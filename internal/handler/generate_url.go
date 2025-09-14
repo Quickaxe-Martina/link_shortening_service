@@ -1,13 +1,16 @@
 package handler
 
 import (
+	"context"
 	"encoding/json"
 	"io"
 	"net/http"
+	"time"
 
 	"github.com/Quickaxe-Martina/link_shortening_service/internal/logger"
 	"github.com/Quickaxe-Martina/link_shortening_service/internal/model"
 	"github.com/Quickaxe-Martina/link_shortening_service/internal/service"
+	"github.com/Quickaxe-Martina/link_shortening_service/internal/storage"
 	"go.uber.org/zap"
 )
 
@@ -23,8 +26,12 @@ func (h *Handler) GenerateURL(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
+
 	logger.Log.Info("URL code", zap.String("URLCode", URLCode))
-	h.storageData.URLData[URLCode] = string(body)
+	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+	defer cancel()
+	h.store.SaveURL(ctx, storage.URL{Code: URLCode, URL: string(body)})
+
 	w.WriteHeader(http.StatusCreated)
 	w.Write([]byte(h.cfg.ServerAddr + URLCode))
 }
@@ -51,7 +58,10 @@ func (h *Handler) JSONGenerateURL(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	logger.Log.Info("URL code", zap.String("URLCode", URLCode))
-	h.storageData.URLData[URLCode] = req.URL
+
+	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+	defer cancel()
+	h.store.SaveURL(ctx, storage.URL{Code: URLCode, URL: req.URL})
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)

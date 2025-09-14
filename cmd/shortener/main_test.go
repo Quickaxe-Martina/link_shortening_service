@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"log"
@@ -21,7 +22,8 @@ func TestGenerateURL(t *testing.T) {
 		RunAddr:    ":8080",
 		ServerAddr: "http://localhost:8080/",
 	}
-	storageData := storage.NewStorage(cfg)
+	storageData, err := storage.NewStorage(cfg)
+	assert.NoError(t, err)
 	router := setupRouter(cfg, storageData)
 	srv := httptest.NewServer(router)
 	defer srv.Close()
@@ -69,9 +71,10 @@ func TestRedirectURL(t *testing.T) {
 		RunAddr:    ":8080",
 		ServerAddr: "http://localhost:8080/",
 	}
-	storageData := storage.NewStorage(cfg)
-	storageData.URLData["qwerty"] = "https://example.com"
-	router := setupRouter(cfg, storageData)
+	store, err := storage.NewStorage(cfg)
+	assert.NoError(t, err)
+	store.SaveURL(context.TODO(), storage.URL{Code: "qwerty", URL: "https://example.com"})
+	router := setupRouter(cfg, store)
 	srv := httptest.NewServer(router)
 	defer srv.Close()
 
@@ -126,7 +129,8 @@ func TestJSONGenerateURL(t *testing.T) {
 		RunAddr:    ":8080",
 		ServerAddr: "http://localhost:8080/",
 	}
-	storageData := storage.NewStorage(cfg)
+	storageData, err := storage.NewStorage(cfg)
+	assert.NoError(t, err)
 	router := setupRouter(cfg, storageData)
 	srv := httptest.NewServer(router)
 	defer srv.Close()

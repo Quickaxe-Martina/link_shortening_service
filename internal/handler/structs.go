@@ -7,14 +7,14 @@ import (
 
 // Handler data
 type Handler struct {
-	cfg         *config.Config
-	storageData *storage.Storage
+	cfg   *config.Config
+	store storage.Storage
 }
 
 // NewHandler create Handler
-func NewHandler(cfg *config.Config, storageData *storage.Storage) *Handler {
+func NewHandler(cfg *config.Config, store storage.Storage) *Handler {
 	return &Handler{
-		cfg:         cfg,
-		storageData: storageData,
+		cfg:   cfg,
+		store: store,
 	}
 }

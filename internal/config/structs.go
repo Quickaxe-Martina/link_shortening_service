@@ -2,17 +2,21 @@ package config
 
 // Config variables
 type Config struct {
-	RunAddr      string `env:"SERVER_ADDRESS"`
-	ServerAddr   string `env:"BASE_URL"`
-	DataFilePath string `env:"FILE_STORAGE_PATH"`
-	DatabaseDsn  string `env:"DATABASE_DSN"`
+	RunAddr        string `env:"SERVER_ADDRESS"`
+	ServerAddr     string `env:"BASE_URL"`
+	DataFilePath   string `env:"FILE_STORAGE_PATH"`
+	DatabaseDsn    string `env:"DATABASE_DSN"`
+	MigrationsPath string `env:"MIGRATIONS_PATH"`
 }
 
 // NewConfig create Config
 func NewConfig() *Config {
 	var cfg = Config{
-		RunAddr:    "",
-		ServerAddr: "",
+		RunAddr:        "",
+		ServerAddr:     "",
+		DataFilePath:   "",
+		DatabaseDsn:    "",
+		MigrationsPath: "./migrations",
 	}
 	LoadEnv(&cfg)
 	ParseFlags(&cfg, true)
