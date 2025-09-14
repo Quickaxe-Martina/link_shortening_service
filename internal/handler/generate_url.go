@@ -3,6 +3,7 @@ package handler
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
 	"time"
@@ -30,7 +31,23 @@ func (h *Handler) GenerateURL(w http.ResponseWriter, r *http.Request) {
 	logger.Log.Info("URL code", zap.String("URLCode", URLCode))
 	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 	defer cancel()
-	h.store.SaveURL(ctx, storage.URL{Code: URLCode, URL: string(body)})
+	if err := h.store.SaveURL(ctx, storage.URL{Code: URLCode, URL: string(body)}); err != nil {
+		if errors.Is(err, storage.ErrURLAlreadyExists) {
+			url, err := h.store.GetByURL(ctx, string(body))
+			if err != nil {
+				logger.Log.Error("error get by url", zap.Error(err))
+				http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+				return
+			}
+
+			w.WriteHeader(http.StatusConflict)
+			w.Write([]byte(h.cfg.ServerAddr + url.Code))
+			return
+		}
+		logger.Log.Error("", zap.Error(err))
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
 
 	w.WriteHeader(http.StatusCreated)
 	w.Write([]byte(h.cfg.ServerAddr + URLCode))
@@ -54,6 +71,7 @@ func (h *Handler) JSONGenerateURL(w http.ResponseWriter, r *http.Request) {
 
 	URLCode, err := service.GenerateRandomString(6)
 	if err != nil {
+		logger.Log.Error("", zap.Error(err))
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
@@ -61,7 +79,34 @@ func (h *Handler) JSONGenerateURL(w http.ResponseWriter, r *http.Request) {
 
 	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 	defer cancel()
-	h.store.SaveURL(ctx, storage.URL{Code: URLCode, URL: req.URL})
+	if err := h.store.SaveURL(ctx, storage.URL{Code: URLCode, URL: req.URL}); err != nil {
+		if errors.Is(err, storage.ErrURLAlreadyExists) {
+			logger.Log.Info("ErrURLAlreadyExists")
+			url, err := h.store.GetByURL(ctx, req.URL)
+			if err != nil {
+				logger.Log.Error("error get by url", zap.Error(err))
+				http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+				return
+			}
+
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusConflict)
+
+			resp := model.JSONGenerateURLResponse{
+				Result: h.cfg.ServerAddr + url.Code,
+			}
+			enc := json.NewEncoder(w)
+			if err := enc.Encode(resp); err != nil {
+				logger.Log.Error("error encoding response", zap.Error(err))
+				http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+				return
+			}
+			return
+		}
+		logger.Log.Error("", zap.Error(err))
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)

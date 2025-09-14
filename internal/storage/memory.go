@@ -39,9 +39,19 @@ func (m *MemoryStorage) SaveURL(ctx context.Context, u URL) error {
 func (m *MemoryStorage) GetURL(ctx context.Context, code string) (URL, error) {
 	u, ok := m.Urls[code]
 	if !ok {
-		return URL{}, errors.New("user not found")
+		return URL{}, errors.New("url not found")
 	}
 	return u, nil
+}
+
+// GetByURL get URL by url from memory
+func (m *MemoryStorage) GetByURL(ctx context.Context, url string) (URL, error) {
+	for _, v := range m.Urls {
+		if v.URL == url {
+			return v, nil
+		}
+	}
+	return URL{}, errors.New("url not found")
 }
 
 // Close releases resources

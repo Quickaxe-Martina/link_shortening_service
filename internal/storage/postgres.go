@@ -3,14 +3,15 @@ package storage
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 
 	_ "github.com/jackc/pgx/v5/stdlib" // driver
 
 	"github.com/Quickaxe-Martina/link_shortening_service/internal/config"
-	"github.com/golang-migrate/migrate/v4"
-	"github.com/golang-migrate/migrate/v4/database/pgx"
-	_ "github.com/golang-migrate/migrate/v4/source/file" //
+	_ "github.com/Quickaxe-Martina/link_shortening_service/internal/logger" // logger
+	"github.com/jackc/pgerrcode"
+	"github.com/jackc/pgx/v5/pgconn"
 )
 
 // PostgresStorage is DB implementation of the Storage interface
@@ -37,6 +38,19 @@ func NewPostgresStorage(cfg *config.Config) *PostgresStorage {
 func (store *PostgresStorage) SaveURL(ctx context.Context, u URL) error {
 	_, err := store.DB.ExecContext(ctx, "INSERT INTO urls (code, url) VALUES ($1, $2)", u.Code, u.URL)
 	if err != nil {
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) {
+			if pgErr.Code == pgerrcode.UniqueViolation {
+				switch pgErr.ConstraintName {
+				case "idx_urls_code":
+					return ErrCodeAlreadyExists
+				case "idx_urls_url":
+					return ErrURLAlreadyExists
+				default:
+					return err
+				}
+			}
+		}
 		return err
 	}
 	return nil
@@ -47,8 +61,22 @@ func (store *PostgresStorage) GetURL(ctx context.Context, code string) (URL, err
 	row := store.DB.QueryRowContext(ctx, "SELECT url FROM urls WHERE code = $1", code)
 	var url string
 	if err := row.Scan(&url); err != nil {
-		if err == sql.ErrNoRows {
+		if errors.Is(err, sql.ErrNoRows) {
 			return URL{}, fmt.Errorf("url with code %s not found", code)
+		}
+		return URL{}, err
+	}
+
+	return URL{Code: code, URL: url}, nil
+}
+
+// GetByURL get URL by url from DB
+func (store *PostgresStorage) GetByURL(ctx context.Context, url string) (URL, error) {
+	row := store.DB.QueryRowContext(ctx, "SELECT code FROM urls WHERE url = $1", url)
+	var code string
+	if err := row.Scan(&code); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return URL{}, fmt.Errorf("url with url %s not found", url)
 		}
 		return URL{}, err
 	}
@@ -97,26 +125,4 @@ func (store *PostgresStorage) SaveBatchURL(ctx context.Context, urls []URL) erro
 		}
 	}
 	return tx.Commit()
-}
-
-func runMigrations(db *sql.DB, migrationsPath string) error {
-	driver, err := pgx.WithInstance(db, &pgx.Config{})
-	if err != nil {
-		return fmt.Errorf("could not create migrate driver: %w", err)
-	}
-
-	m, err := migrate.NewWithDatabaseInstance(
-		"file://"+migrationsPath,
-		"pgx",
-		driver,
-	)
-	if err != nil {
-		return fmt.Errorf("could not create migrate instance: %w", err)
-	}
-
-	if err := m.Up(); err != nil && err != migrate.ErrNoChange {
-		return fmt.Errorf("migration failed: %w", err)
-	}
-
-	return nil
 }
