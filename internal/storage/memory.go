@@ -61,3 +61,11 @@ func (m *MemoryStorage) Ping(ctx context.Context) error {
 func (m *MemoryStorage) AllURLs(ctx context.Context) ([]URL, error) {
 	return slices.Collect(maps.Values(m.Urls)), nil
 }
+
+// SaveBatchURL save list of URL
+func (m *MemoryStorage) SaveBatchURL(ctx context.Context, urls []URL) error {
+	for _, url := range urls {
+		m.SaveURL(ctx, url)
+	}
+	return nil
+}

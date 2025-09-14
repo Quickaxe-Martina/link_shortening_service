@@ -76,6 +76,29 @@ func (store *PostgresStorage) AllURLs(ctx context.Context) ([]URL, error) {
 	return []URL{}, nil
 }
 
+// SaveBatchURL save list of URL
+func (store *PostgresStorage) SaveBatchURL(ctx context.Context, urls []URL) error {
+	tx, err := store.DB.Begin()
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	stmt, err := tx.PrepareContext(ctx, "INSERT INTO urls (code, url) VALUES ($1, $2)")
+	if err != nil {
+		return err
+	}
+	defer stmt.Close()
+
+	for _, url := range urls {
+		_, err := stmt.ExecContext(ctx, url.Code, url.URL)
+		if err != nil {
+			return err
+		}
+	}
+	return tx.Commit()
+}
+
 func runMigrations(db *sql.DB, migrationsPath string) error {
 	driver, err := pgx.WithInstance(db, &pgx.Config{})
 	if err != nil {

@@ -27,6 +27,7 @@ func setupRouter(cfg *config.Config, store storage.Storage) *chi.Mux {
 	})
 	r.Route("/api/shorten", func(r chi.Router) {
 		r.Post("/", h.JSONGenerateURL)
+		r.Post("/batch", h.BatchGenerateURL)
 	})
 	r.Route("/ping", func(r chi.Router) {
 		r.Get("/", h.Ping)

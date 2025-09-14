@@ -76,3 +76,48 @@ func (h *Handler) JSONGenerateURL(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 }
+
+// BatchGenerateURL handles HTTP JSON requests to create a shortened URL.
+func (h *Handler) BatchGenerateURL(w http.ResponseWriter, r *http.Request) {
+	var requests []model.BatchGenerateURLRequest
+	var urls []storage.URL
+	var responses []model.BatchGenerateURLResponse
+
+	dec := json.NewDecoder(r.Body)
+	if err := dec.Decode(&requests); err != nil {
+		logger.Log.Debug("cannot decode request JSON body", zap.Error(err))
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	for _, req := range requests {
+		if err := req.Validate(); err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		URLCode, err := service.GenerateRandomString(6)
+		if err != nil {
+			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+			return
+		}
+		url := storage.URL{Code: URLCode, URL: req.URL}
+		urls = append(urls, url)
+		resp := model.BatchGenerateURLResponse{CorrelationID: req.CorrelationID, ShortURL: h.cfg.ServerAddr + URLCode}
+		responses = append(responses, resp)
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	defer cancel()
+	if err := h.store.SaveBatchURL(ctx, urls); err != nil {
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+
+	enc := json.NewEncoder(w)
+	if err := enc.Encode(responses); err != nil {
+		logger.Log.Error("error encoding response", zap.Error(err))
+		return
+	}
+}
