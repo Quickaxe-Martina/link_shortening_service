@@ -28,12 +28,15 @@ func setupRouter(cfg *config.Config, storageData *storage.Storage) *chi.Mux {
 	r.Route("/api/shorten", func(r chi.Router) {
 		r.Post("/", h.JSONGenerateURL)
 	})
+	r.Route("/ping", func(r chi.Router) {
+		r.Get("/", h.Ping)
+	})
 	return r
 }
 
 func main() {
 	cfg := config.NewConfig()
-	storageData := storage.NewStorage()
+	storageData := storage.NewStorage(cfg)
 	storage.LoadData(cfg.DataFilePath, storageData)
 
 	if err := logger.Initialize("info"); err != nil {
@@ -47,6 +50,7 @@ func main() {
 		signal.Notify(ch, syscall.SIGINT, syscall.SIGTERM)
 		<-ch
 		storage.SaveData(cfg.DataFilePath, storageData)
+		storageData.Close()
 		os.Exit(0)
 	}()
 

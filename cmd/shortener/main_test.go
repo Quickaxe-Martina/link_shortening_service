@@ -21,7 +21,7 @@ func TestGenerateURL(t *testing.T) {
 		RunAddr:    ":8080",
 		ServerAddr: "http://localhost:8080/",
 	}
-	storageData := storage.NewStorage()
+	storageData := storage.NewStorage(cfg)
 	router := setupRouter(cfg, storageData)
 	srv := httptest.NewServer(router)
 	defer srv.Close()
@@ -69,7 +69,7 @@ func TestRedirectURL(t *testing.T) {
 		RunAddr:    ":8080",
 		ServerAddr: "http://localhost:8080/",
 	}
-	storageData := storage.NewStorage()
+	storageData := storage.NewStorage(cfg)
 	storageData.URLData["qwerty"] = "https://example.com"
 	router := setupRouter(cfg, storageData)
 	srv := httptest.NewServer(router)
@@ -126,7 +126,7 @@ func TestJSONGenerateURL(t *testing.T) {
 		RunAddr:    ":8080",
 		ServerAddr: "http://localhost:8080/",
 	}
-	storageData := storage.NewStorage()
+	storageData := storage.NewStorage(cfg)
 	router := setupRouter(cfg, storageData)
 	srv := httptest.NewServer(router)
 	defer srv.Close()
