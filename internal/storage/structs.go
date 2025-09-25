@@ -1,32 +1,26 @@
 package storage
 
 import (
-	"database/sql"
-
-	"github.com/Quickaxe-Martina/link_shortening_service/internal/config"
-
-	_ "github.com/jackc/pgx/v5/stdlib" // driver
+	"context"
 )
 
-// Storage variables
-type Storage struct {
-	URLData map[string]string
-	DB      *sql.DB
+// URL code and original value
+type URL struct {
+	Code string
+	URL  string
 }
 
-// NewStorage create Storage
-func NewStorage(cfg *config.Config) *Storage {
-	db, err := sql.Open("pgx", cfg.DatabaseDsn)
-	if err != nil {
-		panic(err)
-	}
-	var storage = Storage{
-		URLData: make(map[string]string),
-		DB:      db,
-	}
-	return &storage
+// URLStorage defines methods for saving and retrieving URLs
+type URLStorage interface {
+	SaveURL(ctx context.Context, u URL) error
+	GetURL(ctx context.Context, code string) (URL, error)
+	AllURLs(ctx context.Context) ([]URL, error)
+	SaveBatchURL(ctx context.Context, urls []URL) error
 }
 
-func (s *Storage) Close() {
-	s.DB.Close()
+// Storage defines methods
+type Storage interface {
+	URLStorage
+	Close() error
+	Ping(ctx context.Context) error
 }

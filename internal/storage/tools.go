@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"context"
 	"encoding/json"
 	"os"
 	"strconv"
@@ -16,7 +17,7 @@ type savedURLItem struct {
 }
 
 // LoadData load data from file
-func LoadData(filePath string, storageData *Storage) {
+func LoadData(filePath string, store Storage) {
 	file, err := os.Open(filePath)
 	var savedData []savedURLItem
 	if err != nil {
@@ -33,12 +34,12 @@ func LoadData(filePath string, storageData *Storage) {
 		logger.Log.Error("JSON decoding error", zap.Error(err))
 	}
 	for _, item := range savedData {
-		storageData.URLData[item.ShortURL] = item.OriginalURL
+		store.SaveURL(context.TODO(), URL{Code: item.ShortURL, URL: item.OriginalURL})
 	}
 }
 
 // SaveData save data in file
-func SaveData(filePath string, storageData *Storage) {
+func SaveData(filePath string, store Storage) {
 	var saveData []savedURLItem
 	file, err := os.Create(filePath)
 	if err != nil {
@@ -47,12 +48,17 @@ func SaveData(filePath string, storageData *Storage) {
 	}
 	defer file.Close()
 
+	urls, err := store.AllURLs(context.TODO())
+	if err != nil {
+		logger.Log.Error("load urls error", zap.Error(err))
+		return
+	}
 	i := 1
-	for short, original := range storageData.URLData {
+	for _, url := range urls {
 		item := savedURLItem{
 			UUID:        strconv.Itoa(i),
-			ShortURL:    short,
-			OriginalURL: original,
+			ShortURL:    url.Code,
+			OriginalURL: url.URL,
 		}
 		saveData = append(saveData, item)
 		i++

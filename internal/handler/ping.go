@@ -13,7 +13,7 @@ import (
 func (h *Handler) Ping(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 	defer cancel()
-	if err := h.storageData.DB.PingContext(ctx); err != nil {
+	if err := h.store.Ping(ctx); err != nil {
 		logger.Log.Error("db error", zap.Error(err))
 		w.WriteHeader(http.StatusInternalServerError)
 	}

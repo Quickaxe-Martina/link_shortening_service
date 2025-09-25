@@ -1,13 +1,16 @@
 package handler
 
 import (
+	"context"
 	"encoding/json"
 	"io"
 	"net/http"
+	"time"
 
 	"github.com/Quickaxe-Martina/link_shortening_service/internal/logger"
 	"github.com/Quickaxe-Martina/link_shortening_service/internal/model"
 	"github.com/Quickaxe-Martina/link_shortening_service/internal/service"
+	"github.com/Quickaxe-Martina/link_shortening_service/internal/storage"
 	"go.uber.org/zap"
 )
 
@@ -23,8 +26,12 @@ func (h *Handler) GenerateURL(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
+
 	logger.Log.Info("URL code", zap.String("URLCode", URLCode))
-	h.storageData.URLData[URLCode] = string(body)
+	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+	defer cancel()
+	h.store.SaveURL(ctx, storage.URL{Code: URLCode, URL: string(body)})
+
 	w.WriteHeader(http.StatusCreated)
 	w.Write([]byte(h.cfg.ServerAddr + URLCode))
 }
@@ -51,7 +58,10 @@ func (h *Handler) JSONGenerateURL(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	logger.Log.Info("URL code", zap.String("URLCode", URLCode))
-	h.storageData.URLData[URLCode] = req.URL
+
+	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+	defer cancel()
+	h.store.SaveURL(ctx, storage.URL{Code: URLCode, URL: req.URL})
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
@@ -62,6 +72,51 @@ func (h *Handler) JSONGenerateURL(w http.ResponseWriter, r *http.Request) {
 	// сериализуем ответ сервера
 	enc := json.NewEncoder(w)
 	if err := enc.Encode(resp); err != nil {
+		logger.Log.Error("error encoding response", zap.Error(err))
+		return
+	}
+}
+
+// BatchGenerateURL handles HTTP JSON requests to create a shortened URL.
+func (h *Handler) BatchGenerateURL(w http.ResponseWriter, r *http.Request) {
+	var requests []model.BatchGenerateURLRequest
+	var urls []storage.URL
+	var responses []model.BatchGenerateURLResponse
+
+	dec := json.NewDecoder(r.Body)
+	if err := dec.Decode(&requests); err != nil {
+		logger.Log.Debug("cannot decode request JSON body", zap.Error(err))
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	for _, req := range requests {
+		if err := req.Validate(); err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		URLCode, err := service.GenerateRandomString(6)
+		if err != nil {
+			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+			return
+		}
+		url := storage.URL{Code: URLCode, URL: req.URL}
+		urls = append(urls, url)
+		resp := model.BatchGenerateURLResponse{CorrelationID: req.CorrelationID, ShortURL: h.cfg.ServerAddr + URLCode}
+		responses = append(responses, resp)
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	defer cancel()
+	if err := h.store.SaveBatchURL(ctx, urls); err != nil {
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+
+	enc := json.NewEncoder(w)
+	if err := enc.Encode(responses); err != nil {
 		logger.Log.Error("error encoding response", zap.Error(err))
 		return
 	}

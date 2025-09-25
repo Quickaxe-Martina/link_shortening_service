@@ -15,9 +15,9 @@ import (
 	"go.uber.org/zap"
 )
 
-func setupRouter(cfg *config.Config, storageData *storage.Storage) *chi.Mux {
+func setupRouter(cfg *config.Config, store storage.Storage) *chi.Mux {
 	r := chi.NewRouter()
-	h := handler.NewHandler(cfg, storageData)
+	h := handler.NewHandler(cfg, store)
 
 	r.Use(logger.RequestLogger)
 	r.Use(handler.GzipMiddleware)
@@ -27,6 +27,7 @@ func setupRouter(cfg *config.Config, storageData *storage.Storage) *chi.Mux {
 	})
 	r.Route("/api/shorten", func(r chi.Router) {
 		r.Post("/", h.JSONGenerateURL)
+		r.Post("/batch", h.BatchGenerateURL)
 	})
 	r.Route("/ping", func(r chi.Router) {
 		r.Get("/", h.Ping)
@@ -36,21 +37,22 @@ func setupRouter(cfg *config.Config, storageData *storage.Storage) *chi.Mux {
 
 func main() {
 	cfg := config.NewConfig()
-	storageData := storage.NewStorage(cfg)
-	storage.LoadData(cfg.DataFilePath, storageData)
+	store, err := storage.NewStorage(cfg)
+	if err != nil {
+		logger.Log.Error("Storage error", zap.Error(err))
+	}
 
 	if err := logger.Initialize("info"); err != nil {
 		log.Panic(err)
 	}
-	r := setupRouter(cfg, storageData)
+	r := setupRouter(cfg, store)
 
 	// Обработчик завершения (Ctrl+C, SIGTERM и т.п.)
 	go func() {
 		ch := make(chan os.Signal, 1)
 		signal.Notify(ch, syscall.SIGINT, syscall.SIGTERM)
 		<-ch
-		storage.SaveData(cfg.DataFilePath, storageData)
-		storageData.Close()
+		store.Close()
 		os.Exit(0)
 	}()
 
