@@ -141,3 +141,31 @@ func (store *PostgresStorage) CreateUser(ctx context.Context) (User, error) {
 	}
 	return User{ID: int(id)}, nil
 }
+
+// GetURLsByUserID returns all URLs associated with a specific user ID
+func (store *PostgresStorage) GetURLsByUserID(ctx context.Context, userID int) ([]URL, error) {
+	rows, err := store.DB.QueryContext(ctx, "SELECT code, url FROM urls WHERE user_id = $1", userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var urls []URL
+	for rows.Next() {
+		var url URL
+		if err := rows.Scan(&url.Code, &url.URL); err != nil {
+			return nil, err
+		}
+		url.UserID = userID
+		urls = append(urls, url)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return urls, nil
+}
+
+// GetAllUsers returns all users
+func (store *PostgresStorage) GetAllUsers(ctx context.Context) ([]User, error) {
+	return nil, ErrNotImplemented
+}

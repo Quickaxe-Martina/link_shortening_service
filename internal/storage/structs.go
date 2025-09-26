@@ -31,6 +31,7 @@ type URLStorage interface {
 	SaveURL(ctx context.Context, u URL) error
 	GetURL(ctx context.Context, code string) (URL, error)
 	GetByURL(ctx context.Context, url string) (URL, error)
+	GetURLsByUserID(ctx context.Context, userID int) ([]URL, error)
 	AllURLs(ctx context.Context) ([]URL, error)
 	SaveBatchURL(ctx context.Context, urls []URL) error
 }
@@ -38,6 +39,7 @@ type URLStorage interface {
 // UserStorage defines methods for user management
 type UserStorage interface {
 	CreateUser(ctx context.Context) (User, error)
+	GetAllUsers(ctx context.Context) ([]User, error)
 }
 
 // Storage defines methods

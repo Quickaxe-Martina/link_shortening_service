@@ -12,6 +12,7 @@ import (
 // MemoryStorage is an in-memory implementation of the Storage interface
 type MemoryStorage struct {
 	Urls         map[string]URL
+	Users        map[int]User
 	UseFile      bool
 	DataFilePath string
 }
@@ -20,6 +21,7 @@ type MemoryStorage struct {
 func NewMemoryStorage(cfg *config.Config, useFile bool) *MemoryStorage {
 	store := &MemoryStorage{
 		Urls:         make(map[string]URL),
+		Users:        make(map[int]User),
 		UseFile:      useFile,
 		DataFilePath: cfg.DataFilePath,
 	}
@@ -82,6 +84,24 @@ func (m *MemoryStorage) SaveBatchURL(ctx context.Context, urls []URL) error {
 
 // CreateUser creates a new user and returns it
 func (m *MemoryStorage) CreateUser(ctx context.Context) (User, error) {
-	// TODO
-	return User{}, ErrNotImplemented
+	newID := len(m.Users) + 1
+	newUser := User{ID: newID}
+	m.Users[newID] = newUser
+	return newUser, nil
+}
+
+// GetURLsByUserID returns all URLs associated with a specific user ID
+func (m *MemoryStorage) GetURLsByUserID(ctx context.Context, userID int) ([]URL, error) {
+	var result []URL
+	for _, url := range m.Urls {
+		if url.UserID == userID {
+			result = append(result, url)
+		}
+	}
+	return result, nil
+}
+
+// GetAllUsers returns all users
+func (m *MemoryStorage) GetAllUsers(ctx context.Context) ([]User, error) {
+	return slices.Collect(maps.Values(m.Users)), nil
 }

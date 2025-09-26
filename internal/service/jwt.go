@@ -42,11 +42,9 @@ func GetUserID(tokenString string, secretKey string) int {
 	}
 
 	if !token.Valid {
-		fmt.Println("Token is not valid")
 		return -1
 	}
 
-	fmt.Println("Token os valid")
 	return claims.UserID
 }
 

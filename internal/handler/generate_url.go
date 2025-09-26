@@ -17,6 +17,13 @@ import (
 
 // GenerateURL handles HTTP requests to create a shortened URL.
 func (h *Handler) GenerateURL(w http.ResponseWriter, r *http.Request) {
+	tokenExp := time.Hour * time.Duration(h.cfg.TokenExp)
+	user, err := service.GetOrCreateUser(w, r, h.store, h.cfg.SecretKey, tokenExp)
+	if err != nil {
+		logger.Log.Error("error get or create user", zap.Error(err))
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
 	body, err := io.ReadAll(r.Body)
 	if err != nil || len(body) == 0 {
 		http.Error(w, "Bad Request", http.StatusBadRequest)
@@ -31,7 +38,7 @@ func (h *Handler) GenerateURL(w http.ResponseWriter, r *http.Request) {
 	logger.Log.Info("URL code", zap.String("URLCode", URLCode))
 	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 	defer cancel()
-	if err := h.store.SaveURL(ctx, storage.URL{Code: URLCode, URL: string(body)}); err != nil {
+	if err := h.store.SaveURL(ctx, storage.URL{Code: URLCode, URL: string(body), UserID: user.ID}); err != nil {
 		if errors.Is(err, storage.ErrURLAlreadyExists) {
 			url, err := h.store.GetByURL(ctx, string(body))
 			if err != nil {
