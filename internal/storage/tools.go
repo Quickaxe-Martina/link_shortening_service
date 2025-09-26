@@ -14,6 +14,7 @@ type savedURLItem struct {
 	UUID        string `json:"uuid"`
 	ShortURL    string `json:"short_url"`
 	OriginalURL string `json:"original_url"`
+	UserID      int    `json:"user_id"`
 }
 
 // LoadData load data from file
@@ -34,7 +35,7 @@ func LoadData(filePath string, store Storage) {
 		logger.Log.Error("JSON decoding error", zap.Error(err))
 	}
 	for _, item := range savedData {
-		store.SaveURL(context.TODO(), URL{Code: item.ShortURL, URL: item.OriginalURL})
+		store.SaveURL(context.TODO(), URL{Code: item.ShortURL, URL: item.OriginalURL, UserID: item.UserID})
 	}
 }
 
@@ -59,6 +60,7 @@ func SaveData(filePath string, store Storage) {
 			UUID:        strconv.Itoa(i),
 			ShortURL:    url.Code,
 			OriginalURL: url.URL,
+			UserID:      url.UserID,
 		}
 		saveData = append(saveData, item)
 		i++

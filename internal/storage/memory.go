@@ -79,3 +79,9 @@ func (m *MemoryStorage) SaveBatchURL(ctx context.Context, urls []URL) error {
 	}
 	return nil
 }
+
+// CreateUser creates a new user and returns it
+func (m *MemoryStorage) CreateUser(ctx context.Context) (User, error) {
+	// TODO
+	return User{}, ErrNotImplemented
+}

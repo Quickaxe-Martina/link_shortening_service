@@ -55,6 +55,14 @@ func (h *Handler) GenerateURL(w http.ResponseWriter, r *http.Request) {
 
 // JSONGenerateURL handles HTTP JSON requests to create a shortened URL.
 func (h *Handler) JSONGenerateURL(w http.ResponseWriter, r *http.Request) {
+	tokenExp := time.Hour * time.Duration(h.cfg.TokenExp)
+	user, err := service.GetOrCreateUser(w, r, h.store, h.cfg.SecretKey, tokenExp)
+	if err != nil {
+		logger.Log.Error("error get or create user", zap.Error(err))
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+		return
+	}
+
 	var req model.JSONGenerateURLRequest
 	dec := json.NewDecoder(r.Body)
 	if err := dec.Decode(&req); err != nil {
@@ -63,7 +71,7 @@ func (h *Handler) JSONGenerateURL(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err := req.Validate()
+	err = req.Validate()
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -79,7 +87,7 @@ func (h *Handler) JSONGenerateURL(w http.ResponseWriter, r *http.Request) {
 
 	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 	defer cancel()
-	if err := h.store.SaveURL(ctx, storage.URL{Code: URLCode, URL: req.URL}); err != nil {
+	if err := h.store.SaveURL(ctx, storage.URL{Code: URLCode, URL: req.URL, UserID: user.ID}); err != nil {
 		if errors.Is(err, storage.ErrURLAlreadyExists) {
 			logger.Log.Info("ErrURLAlreadyExists")
 			url, err := h.store.GetByURL(ctx, req.URL)
@@ -114,7 +122,7 @@ func (h *Handler) JSONGenerateURL(w http.ResponseWriter, r *http.Request) {
 	resp := model.JSONGenerateURLResponse{
 		Result: h.cfg.ServerAddr + URLCode,
 	}
-	// сериализуем ответ сервера
+
 	enc := json.NewEncoder(w)
 	if err := enc.Encode(resp); err != nil {
 		logger.Log.Error("error encoding response", zap.Error(err))
