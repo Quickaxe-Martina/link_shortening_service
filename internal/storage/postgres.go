@@ -36,7 +36,12 @@ func NewPostgresStorage(cfg *config.Config) *PostgresStorage {
 
 // SaveURL save a URL by code in DB
 func (store *PostgresStorage) SaveURL(ctx context.Context, u URL) error {
-	_, err := store.DB.ExecContext(ctx, "INSERT INTO urls (code, url) VALUES ($1, $2)", u.Code, u.URL)
+	userID := sql.NullInt64{}
+	if u.UserID != 0 {
+		userID.Int64 = int64(u.UserID)
+		userID.Valid = true
+	}
+	_, err := store.DB.ExecContext(ctx, "INSERT INTO urls (code, url, user_id) VALUES ($1, $2, $3)", u.Code, u.URL, userID)
 	if err != nil {
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) {
@@ -101,7 +106,7 @@ func (store *PostgresStorage) Ping(ctx context.Context) error {
 // AllURLs returns all URLs
 func (store *PostgresStorage) AllURLs(ctx context.Context) ([]URL, error) {
 	// TODO
-	return []URL{}, nil
+	return []URL{}, ErrNotImplemented
 }
 
 // SaveBatchURL save list of URL
@@ -125,4 +130,42 @@ func (store *PostgresStorage) SaveBatchURL(ctx context.Context, urls []URL) erro
 		}
 	}
 	return tx.Commit()
+}
+
+// CreateUser creates a new user and returns it
+func (store *PostgresStorage) CreateUser(ctx context.Context) (User, error) {
+	var id int
+	err := store.DB.QueryRowContext(ctx, "INSERT INTO users DEFAULT VALUES RETURNING id").Scan(&id)
+	if err != nil {
+		return User{}, err
+	}
+	return User{ID: int(id)}, nil
+}
+
+// GetURLsByUserID returns all URLs associated with a specific user ID
+func (store *PostgresStorage) GetURLsByUserID(ctx context.Context, userID int) ([]URL, error) {
+	rows, err := store.DB.QueryContext(ctx, "SELECT code, url FROM urls WHERE user_id = $1", userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var urls []URL
+	for rows.Next() {
+		var url URL
+		if err := rows.Scan(&url.Code, &url.URL); err != nil {
+			return nil, err
+		}
+		url.UserID = userID
+		urls = append(urls, url)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return urls, nil
+}
+
+// GetAllUsers returns all users
+func (store *PostgresStorage) GetAllUsers(ctx context.Context) ([]User, error) {
+	return nil, ErrNotImplemented
 }

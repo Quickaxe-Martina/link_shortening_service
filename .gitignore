@@ -7,6 +7,10 @@
 cmd/shortener/shortenertestbeta
 cmd/shortener/shortenertest
 cmd/shortener/tests.sh
+storage.json
+user_data.json
+user_sessions.json
+user_storage.json
 # Test binary, built with `go test -c`
 *.test
 

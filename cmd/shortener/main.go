@@ -29,6 +29,9 @@ func setupRouter(cfg *config.Config, store storage.Storage) *chi.Mux {
 		r.Post("/", h.JSONGenerateURL)
 		r.Post("/batch", h.BatchGenerateURL)
 	})
+	r.Route("/api/user", func(r chi.Router) {
+		r.Get("/urls", h.GetUserURLs)
+	})
 	r.Route("/ping", func(r chi.Router) {
 		r.Get("/", h.Ping)
 	})

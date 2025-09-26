@@ -14,12 +14,18 @@ type savedURLItem struct {
 	UUID        string `json:"uuid"`
 	ShortURL    string `json:"short_url"`
 	OriginalURL string `json:"original_url"`
+	UserID      int    `json:"user_id"`
 }
 
-// LoadData load data from file
-func LoadData(filePath string, store Storage) {
+type savedUserItem struct {
+	UUID string `json:"uuid"`
+	ID   int    `json:"id"`
+}
+
+const userFilePrefix = "user_"
+
+func loadFromFile(filePath string, data any) {
 	file, err := os.Open(filePath)
-	var savedData []savedURLItem
 	if err != nil {
 		if os.IsNotExist(err) {
 			return
@@ -29,24 +35,45 @@ func LoadData(filePath string, store Storage) {
 	defer file.Close()
 
 	decoder := json.NewDecoder(file)
-	err = decoder.Decode(&savedData)
+	err = decoder.Decode(data)
 	if err != nil {
 		logger.Log.Error("JSON decoding error", zap.Error(err))
 	}
+}
+
+// LoadData load data from file
+func LoadData(filePath string, store Storage) {
+	var savedData []savedURLItem
+	loadFromFile(filePath, &savedData)
 	for _, item := range savedData {
-		store.SaveURL(context.TODO(), URL{Code: item.ShortURL, URL: item.OriginalURL})
+		store.SaveURL(context.TODO(), URL{Code: item.ShortURL, URL: item.OriginalURL, UserID: item.UserID})
+	}
+
+	var savedUsers []savedUserItem
+	loadFromFile(userFilePrefix+filePath, &savedUsers)
+	for _, item := range savedUsers {
+		store.(*MemoryStorage).Users[item.ID] = User{ID: item.ID}
 	}
 }
 
-// SaveData save data in file
-func SaveData(filePath string, store Storage) {
-	var saveData []savedURLItem
+func saveDataToFile(filePath string, data any) {
 	file, err := os.Create(filePath)
 	if err != nil {
 		logger.Log.Error("file creation error", zap.Error(err))
 		return
 	}
 	defer file.Close()
+
+	encoder := json.NewEncoder(file)
+	encoder.SetIndent("", "  ")
+	if err := encoder.Encode(data); err != nil {
+		logger.Log.Error("JSON encoding error", zap.Error(err))
+	}
+}
+
+// SaveData save data in file
+func SaveData(filePath string, store Storage) {
+	var saveURLData []savedURLItem
 
 	urls, err := store.AllURLs(context.TODO())
 	if err != nil {
@@ -59,14 +86,26 @@ func SaveData(filePath string, store Storage) {
 			UUID:        strconv.Itoa(i),
 			ShortURL:    url.Code,
 			OriginalURL: url.URL,
+			UserID:      url.UserID,
 		}
-		saveData = append(saveData, item)
+		saveURLData = append(saveURLData, item)
 		i++
 	}
+	saveDataToFile(filePath, saveURLData)
 
-	encoder := json.NewEncoder(file)
-	encoder.SetIndent("", "  ")
-	if err := encoder.Encode(saveData); err != nil {
-		logger.Log.Error("JSON encoding error", zap.Error(err))
+	// Save users
+	var saveUserData []savedUserItem
+	users, err := store.GetAllUsers(context.TODO())
+	if err != nil {
+		logger.Log.Error("load users error", zap.Error(err))
+		return
 	}
+	for _, user := range users {
+		item := savedUserItem{
+			UUID: strconv.Itoa(user.ID),
+			ID:   user.ID,
+		}
+		saveUserData = append(saveUserData, item)
+	}
+	saveDataToFile(userFilePrefix+filePath, saveUserData)
 }
