@@ -43,7 +43,7 @@ jobs:
       - name: Download autotests binaries
         uses: robinraju/release-downloader@v1.8
         with:
-          repository: Yandex-Practicum/go-autotests
+          repository: kuznet1/go-autotests
           latest: true
           fileName: "*"
           out-file-path: .tools
