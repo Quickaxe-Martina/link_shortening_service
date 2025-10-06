@@ -337,7 +337,7 @@ jobs:
               -binary-path=cmd/shortener/shortener \
               -source-path=. \
               -database-dsn=$DATABASE_CONN_STRING
-          go build cmd/wipedb/wipedb.go -buildvcs=false -o wipedb_cascade
+          go build -buildvcs=false -o wipedb_cascade cmd/wipedb/wipedb.go 
           wiwipedb_cascadepedb $DATABASE_CONN_STRING
 
       - name: "Code increment #11"
