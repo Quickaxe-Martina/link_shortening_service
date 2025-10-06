@@ -43,7 +43,7 @@ jobs:
       - name: Download autotests binaries
         uses: robinraju/release-downloader@v1.8
         with:
-          repository: kuznet1/go-autotests
+          repository: Yandex-Practicum/go-autotests
           latest: true
           fileName: "*"
           out-file-path: .tools
@@ -337,7 +337,8 @@ jobs:
               -binary-path=cmd/shortener/shortener \
               -source-path=. \
               -database-dsn=$DATABASE_CONN_STRING
-          wipedb $DATABASE_CONN_STRING
+          go build cmd/wipedb/wipedb.go -buildvcs=false -o wipedb_cascade
+          wiwipedb_cascadepedb $DATABASE_CONN_STRING
 
       - name: "Code increment #11"
         if: |

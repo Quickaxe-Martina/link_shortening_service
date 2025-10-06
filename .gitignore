@@ -32,3 +32,4 @@ shortener
 shortenertest
 shortenertestbeta
 tests.sh
+cmd/wipedb/wipedb
