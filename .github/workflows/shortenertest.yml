@@ -341,7 +341,7 @@ jobs:
               -source-path=. \
               -database-dsn=$DATABASE_CONN_STRING
           ls -la
-          wipedb_cascade $DATABASE_CONN_STRING
+          cmd/wipedb/wipedb_cascade $DATABASE_CONN_STRING
 
       - name: "Code increment #11"
         if: |
