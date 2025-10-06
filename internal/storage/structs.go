@@ -11,14 +11,18 @@ var ErrURLAlreadyExists = errors.New("url already exists")
 // ErrCodeAlreadyExists code is already taken
 var ErrCodeAlreadyExists = errors.New("url already taken")
 
+// ErrURLDeleted code is already deleted
+var ErrURLDeleted = errors.New("url has deleted")
+
 // ErrNotImplemented not implemented
 var ErrNotImplemented = errors.New("not implemented")
 
 // URL code and original value
 type URL struct {
-	Code   string
-	URL    string
-	UserID int
+	Code      string
+	URL       string
+	UserID    int
+	isDeleted bool
 }
 
 // User model
@@ -34,6 +38,7 @@ type URLStorage interface {
 	GetURLsByUserID(ctx context.Context, userID int) ([]URL, error)
 	AllURLs(ctx context.Context) ([]URL, error)
 	SaveBatchURL(ctx context.Context, urls []URL) error
+	DeleteUserURLs(ctx context.Context, userID int, codes []string) error
 }
 
 // UserStorage defines methods for user management

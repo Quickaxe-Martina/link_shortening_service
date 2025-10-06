@@ -6,18 +6,20 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/Quickaxe-Martina/link_shortening_service/internal/config"
 	"github.com/Quickaxe-Martina/link_shortening_service/internal/handler"
 	"github.com/Quickaxe-Martina/link_shortening_service/internal/logger"
+	"github.com/Quickaxe-Martina/link_shortening_service/internal/repository"
 	"github.com/Quickaxe-Martina/link_shortening_service/internal/storage"
 	"github.com/go-chi/chi/v5"
 	"go.uber.org/zap"
 )
 
-func setupRouter(cfg *config.Config, store storage.Storage) *chi.Mux {
+func setupRouter(cfg *config.Config, store storage.Storage, deleteWorker *repository.DeleteURLsWorkers) *chi.Mux {
 	r := chi.NewRouter()
-	h := handler.NewHandler(cfg, store)
+	h := handler.NewHandler(cfg, store, deleteWorker)
 
 	r.Use(logger.RequestLogger)
 	r.Use(handler.GzipMiddleware)
@@ -31,6 +33,7 @@ func setupRouter(cfg *config.Config, store storage.Storage) *chi.Mux {
 	})
 	r.Route("/api/user", func(r chi.Router) {
 		r.Get("/urls", h.GetUserURLs)
+		r.Delete("/urls", h.DeleteUserURLs)
 	})
 	r.Route("/ping", func(r chi.Router) {
 		r.Get("/", h.Ping)
@@ -41,6 +44,7 @@ func setupRouter(cfg *config.Config, store storage.Storage) *chi.Mux {
 func main() {
 	cfg := config.NewConfig()
 	store, err := storage.NewStorage(cfg)
+	deleteWorker := repository.NewDeleteURLsWorkers(store, 3, 5*time.Second, 10)
 	if err != nil {
 		logger.Log.Error("Storage error", zap.Error(err))
 	}
@@ -48,7 +52,7 @@ func main() {
 	if err := logger.Initialize("info"); err != nil {
 		log.Panic(err)
 	}
-	r := setupRouter(cfg, store)
+	r := setupRouter(cfg, store, deleteWorker)
 
 	// Обработчик завершения (Ctrl+C, SIGTERM и т.п.)
 	go func() {
@@ -56,6 +60,7 @@ func main() {
 		signal.Notify(ch, syscall.SIGINT, syscall.SIGTERM)
 		<-ch
 		store.Close()
+		deleteWorker.Stop()
 		os.Exit(0)
 	}()
 

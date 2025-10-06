@@ -105,3 +105,8 @@ func (m *MemoryStorage) GetURLsByUserID(ctx context.Context, userID int) ([]URL,
 func (m *MemoryStorage) GetAllUsers(ctx context.Context) ([]User, error) {
 	return slices.Collect(maps.Values(m.Users)), nil
 }
+
+// DeleteUserURLs delete user's urls
+func (m *MemoryStorage) DeleteUserURLs(ctx context.Context, userID int, codes []string) error {
+	return ErrNotImplemented
+}

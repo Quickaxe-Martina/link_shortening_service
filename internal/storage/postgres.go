@@ -12,6 +12,7 @@ import (
 	_ "github.com/Quickaxe-Martina/link_shortening_service/internal/logger" // logger
 	"github.com/jackc/pgerrcode"
 	"github.com/jackc/pgx/v5/pgconn"
+	"github.com/lib/pq"
 )
 
 // PostgresStorage is DB implementation of the Storage interface
@@ -63,30 +64,38 @@ func (store *PostgresStorage) SaveURL(ctx context.Context, u URL) error {
 
 // GetURL get URL by code from DB
 func (store *PostgresStorage) GetURL(ctx context.Context, code string) (URL, error) {
-	row := store.DB.QueryRowContext(ctx, "SELECT url FROM urls WHERE code = $1", code)
+	row := store.DB.QueryRowContext(ctx, "SELECT url, is_deleted FROM urls WHERE code = $1", code)
 	var url string
-	if err := row.Scan(&url); err != nil {
+	var isDeleted bool
+	if err := row.Scan(&url, &isDeleted); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return URL{}, fmt.Errorf("url with code %s not found", code)
 		}
 		return URL{}, err
 	}
+	if isDeleted {
+		return URL{}, ErrURLDeleted
+	}
 
-	return URL{Code: code, URL: url}, nil
+	return URL{Code: code, URL: url, isDeleted: isDeleted}, nil
 }
 
 // GetByURL get URL by url from DB
 func (store *PostgresStorage) GetByURL(ctx context.Context, url string) (URL, error) {
-	row := store.DB.QueryRowContext(ctx, "SELECT code FROM urls WHERE url = $1", url)
+	row := store.DB.QueryRowContext(ctx, "SELECT code, is_deleted FROM urls WHERE url = $1", url)
 	var code string
-	if err := row.Scan(&code); err != nil {
+	var isDeleted bool
+	if err := row.Scan(&code, &isDeleted); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return URL{}, fmt.Errorf("url with url %s not found", url)
 		}
 		return URL{}, err
 	}
+	if isDeleted {
+		return URL{}, ErrURLDeleted
+	}
 
-	return URL{Code: code, URL: url}, nil
+	return URL{Code: code, URL: url, isDeleted: isDeleted}, nil
 }
 
 // Close releases resources
@@ -144,7 +153,7 @@ func (store *PostgresStorage) CreateUser(ctx context.Context) (User, error) {
 
 // GetURLsByUserID returns all URLs associated with a specific user ID
 func (store *PostgresStorage) GetURLsByUserID(ctx context.Context, userID int) ([]URL, error) {
-	rows, err := store.DB.QueryContext(ctx, "SELECT code, url FROM urls WHERE user_id = $1", userID)
+	rows, err := store.DB.QueryContext(ctx, "SELECT code, url FROM urls WHERE user_id = $1 AND is_deleted=FALSE", userID)
 	if err != nil {
 		return nil, err
 	}
@@ -168,4 +177,15 @@ func (store *PostgresStorage) GetURLsByUserID(ctx context.Context, userID int) (
 // GetAllUsers returns all users
 func (store *PostgresStorage) GetAllUsers(ctx context.Context) ([]User, error) {
 	return nil, ErrNotImplemented
+}
+
+// DeleteUserURLs delete user's urls
+func (store *PostgresStorage) DeleteUserURLs(ctx context.Context, userID int, codes []string) error {
+	query := `
+        UPDATE urls
+        SET is_deleted = TRUE
+        WHERE user_id = $1 AND code = ANY($2::text[]);
+    `
+	_, err := store.DB.ExecContext(ctx, query, userID, pq.Array(codes))
+	return err
 }

@@ -57,3 +57,30 @@ func (h *Handler) GetUserURLs(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 }
+
+// DeleteUserURLs delete users's urls
+func (h *Handler) DeleteUserURLs(w http.ResponseWriter, r *http.Request) {
+	var codes []string
+	user, err := service.GetUserByCookie(r, h.cfg.SecretKey)
+	if err != nil {
+		if errors.Is(err, service.ErrNoJWTInCookie) || errors.Is(err, service.ErrInvalidJWTToken) {
+			user, err = service.GetOrCreateUser(w, r, h.store, h.cfg.SecretKey, time.Hour*time.Duration(h.cfg.TokenExp))
+			if err != nil {
+				logger.Log.Error("error get or create user", zap.Error(err))
+				http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+				return
+			}
+		} else {
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			return
+		}
+	}
+	dec := json.NewDecoder(r.Body)
+	if err := dec.Decode(&codes); err != nil {
+		logger.Log.Debug("cannot decode request JSON body", zap.Error(err))
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	h.deleteWorker.AddTask(user.ID, codes)
+	w.WriteHeader(http.StatusAccepted)
+}
