@@ -338,7 +338,7 @@ jobs:
               -source-path=. \
               -database-dsn=$DATABASE_CONN_STRING
           go build -buildvcs=false -o wipedb_cascade cmd/wipedb/wipedb.go 
-          wiwipedb_cascadepedb $DATABASE_CONN_STRING
+          wipedb_cascade $DATABASE_CONN_STRING
 
       - name: "Code increment #11"
         if: |
@@ -361,7 +361,8 @@ jobs:
           shortenertestbeta -test.v -test.run=^TestIteration11$ \
               -binary-path=cmd/shortener/shortener \
               -database-dsn=$DATABASE_CONN_STRING
-          wipedb $DATABASE_CONN_STRING
+          go build -buildvcs=false -o wipedb_cascade cmd/wipedb/wipedb.go 
+          wipedb_cascade $DATABASE_CONN_STRING
 
       - name: "Code increment #12"
         if: |
@@ -383,7 +384,8 @@ jobs:
           shortenertestbeta -test.v -test.run=^TestIteration12$ \
               -binary-path=cmd/shortener/shortener \
               -database-dsn=$DATABASE_CONN_STRING
-          wipedb $DATABASE_CONN_STRING
+          go build -buildvcs=false -o wipedb_cascade cmd/wipedb/wipedb.go 
+          wipedb_cascade $DATABASE_CONN_STRING
 
       - name: "Code increment #13"
         if: |
@@ -404,7 +406,8 @@ jobs:
           shortenertestbeta -test.v -test.run=^TestIteration13$ \
               -binary-path=cmd/shortener/shortener \
               -database-dsn=$DATABASE_CONN_STRING
-          wipedb $DATABASE_CONN_STRING
+          go build -buildvcs=false -o wipedb_cascade cmd/wipedb/wipedb.go 
+          wipedb_cascade $DATABASE_CONN_STRING
 
       - name: "Code increment #14"
         if: |
@@ -424,7 +427,8 @@ jobs:
           shortenertestbeta -test.v -test.run=^TestIteration14$ \
               -binary-path=cmd/shortener/shortener \
               -database-dsn=$DATABASE_CONN_STRING
-          wipedb $DATABASE_CONN_STRING
+          go build -buildvcs=false -o wipedb_cascade cmd/wipedb/wipedb.go 
+          wipedb_cascade $DATABASE_CONN_STRING
 
       - name: "Code increment #15"
         if: |
@@ -443,7 +447,8 @@ jobs:
           shortenertestbeta -test.v -test.run=^TestIteration15$ \
               -binary-path=cmd/shortener/shortener \
               -database-dsn=$DATABASE_CONN_STRING
-          wipedb $DATABASE_CONN_STRING
+          go build -buildvcs=false -o wipedb_cascade cmd/wipedb/wipedb.go 
+          wipedb_cascade $DATABASE_CONN_STRING
 
       - name: "Code increment #16"
         if: |
