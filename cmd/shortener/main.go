@@ -25,15 +25,15 @@ func setupRouter(cfg *config.Config, store storage.Storage, deleteWorker *reposi
 	r.Use(handler.GzipMiddleware)
 	r.Route("/", func(r chi.Router) {
 		r.Get("/{URLCode}", h.RedirectURL)
-		r.Post("/", h.GenerateURL)
+		r.With(h.GetOrCreateUserMiddleware).Post("/", h.GenerateURL)
 	})
 	r.Route("/api/shorten", func(r chi.Router) {
-		r.Post("/", h.JSONGenerateURL)
+		r.With(h.GetOrCreateUserMiddleware).Post("/", h.JSONGenerateURL)
 		r.Post("/batch", h.BatchGenerateURL)
 	})
 	r.Route("/api/user", func(r chi.Router) {
-		r.Get("/urls", h.GetUserURLs)
-		r.Delete("/urls", h.DeleteUserURLs)
+		r.With(h.GetOrCreateUserMiddleware).Get("/urls", h.GetUserURLs)
+		r.With(h.GetOrCreateUserMiddleware).Delete("/urls", h.DeleteUserURLs)
 	})
 	r.Route("/ping", func(r chi.Router) {
 		r.Get("/", h.Ping)
@@ -44,7 +44,7 @@ func setupRouter(cfg *config.Config, store storage.Storage, deleteWorker *reposi
 func main() {
 	cfg := config.NewConfig()
 	store, err := storage.NewStorage(cfg)
-	deleteWorker := repository.NewDeleteURLsWorkers(store, 3, 5*time.Second, 10)
+	deleteWorker := repository.NewDeleteURLsWorkers(store, 3, time.Duration(cfg.DeleteTimeDuration), cfg.DeleteBachSize)
 	if err != nil {
 		logger.Log.Error("Storage error", zap.Error(err))
 	}

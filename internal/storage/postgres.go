@@ -179,7 +179,8 @@ func (store *PostgresStorage) GetAllUsers(ctx context.Context) ([]User, error) {
 	return nil, ErrNotImplemented
 }
 
-// DeleteUserURLs delete user's urls
+// DeleteUserURLs marks user's URLs as deleted.
+// Security: ensures only URLs belonging to the given userID are affected.
 func (store *PostgresStorage) DeleteUserURLs(ctx context.Context, userID int, codes []string) error {
 	query := `
         UPDATE urls

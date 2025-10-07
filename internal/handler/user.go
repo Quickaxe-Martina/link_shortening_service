@@ -2,13 +2,10 @@ package handler
 
 import (
 	"encoding/json"
-	"errors"
 	"net/http"
-	"time"
 
 	"github.com/Quickaxe-Martina/link_shortening_service/internal/logger"
 	"github.com/Quickaxe-Martina/link_shortening_service/internal/model"
-	"github.com/Quickaxe-Martina/link_shortening_service/internal/service"
 
 	"go.uber.org/zap"
 )
@@ -16,20 +13,8 @@ import (
 // GetUserURLs handles HTTP requests to retrieve all URLs associated with the authenticated user.
 func (h *Handler) GetUserURLs(w http.ResponseWriter, r *http.Request) {
 	var responses []model.UserURLsResponse
-	user, err := service.GetUserByCookie(r, h.cfg.SecretKey)
-	if err != nil {
-		if errors.Is(err, service.ErrNoJWTInCookie) || errors.Is(err, service.ErrInvalidJWTToken) {
-			user, err = service.GetOrCreateUser(w, r, h.store, h.cfg.SecretKey, time.Hour*time.Duration(h.cfg.TokenExp))
-			if err != nil {
-				logger.Log.Error("error get or create user", zap.Error(err))
-				http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-				return
-			}
-		} else {
-			http.Error(w, "Unauthorized", http.StatusUnauthorized)
-			return
-		}
-	}
+	user := GetUser(r.Context())
+
 	urls, err := h.store.GetURLsByUserID(r.Context(), user.ID)
 	if err != nil {
 		logger.Log.Error("error get urls by user id", zap.Error(err))
@@ -61,20 +46,7 @@ func (h *Handler) GetUserURLs(w http.ResponseWriter, r *http.Request) {
 // DeleteUserURLs delete users's urls
 func (h *Handler) DeleteUserURLs(w http.ResponseWriter, r *http.Request) {
 	var codes []string
-	user, err := service.GetUserByCookie(r, h.cfg.SecretKey)
-	if err != nil {
-		if errors.Is(err, service.ErrNoJWTInCookie) || errors.Is(err, service.ErrInvalidJWTToken) {
-			user, err = service.GetOrCreateUser(w, r, h.store, h.cfg.SecretKey, time.Hour*time.Duration(h.cfg.TokenExp))
-			if err != nil {
-				logger.Log.Error("error get or create user", zap.Error(err))
-				http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-				return
-			}
-		} else {
-			http.Error(w, "Unauthorized", http.StatusUnauthorized)
-			return
-		}
-	}
+	user := GetUser(r.Context())
 	dec := json.NewDecoder(r.Body)
 	if err := dec.Decode(&codes); err != nil {
 		logger.Log.Debug("cannot decode request JSON body", zap.Error(err))

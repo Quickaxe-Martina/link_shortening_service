@@ -17,13 +17,8 @@ import (
 
 // GenerateURL handles HTTP requests to create a shortened URL.
 func (h *Handler) GenerateURL(w http.ResponseWriter, r *http.Request) {
-	tokenExp := time.Hour * time.Duration(h.cfg.TokenExp)
-	user, err := service.GetOrCreateUser(w, r, h.store, h.cfg.SecretKey, tokenExp)
-	if err != nil {
-		logger.Log.Error("error get or create user", zap.Error(err))
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-		return
-	}
+	user := GetUser(r.Context())
+
 	body, err := io.ReadAll(r.Body)
 	if err != nil || len(body) == 0 {
 		http.Error(w, "Bad Request", http.StatusBadRequest)
@@ -62,13 +57,7 @@ func (h *Handler) GenerateURL(w http.ResponseWriter, r *http.Request) {
 
 // JSONGenerateURL handles HTTP JSON requests to create a shortened URL.
 func (h *Handler) JSONGenerateURL(w http.ResponseWriter, r *http.Request) {
-	tokenExp := time.Hour * time.Duration(h.cfg.TokenExp)
-	user, err := service.GetOrCreateUser(w, r, h.store, h.cfg.SecretKey, tokenExp)
-	if err != nil {
-		logger.Log.Error("error get or create user", zap.Error(err))
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-		return
-	}
+	user := GetUser(r.Context())
 
 	var req model.JSONGenerateURLRequest
 	dec := json.NewDecoder(r.Body)
@@ -78,7 +67,7 @@ func (h *Handler) JSONGenerateURL(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = req.Validate()
+	err := req.Validate()
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
