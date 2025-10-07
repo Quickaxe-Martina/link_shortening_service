@@ -11,7 +11,7 @@ type Config struct {
 	SecretKey          string `env:"SECRET_KEY"`
 	TokenExp           int    `env:"TOKEN_EXP"`
 	DeleteBachSize     int    `env:DELETE_BACH_SIZE`
-	DeleteTimeDuration int    `DELETE_TIME_DURATION`
+	DeleteTimeDuration int    `env:DELETE_TIME_DURATION`
 }
 
 // NewConfig create Config
