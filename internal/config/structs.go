@@ -10,8 +10,8 @@ type Config struct {
 	DevMode            bool   `env:"DEV_MODE"`
 	SecretKey          string `env:"SECRET_KEY"`
 	TokenExp           int    `env:"TOKEN_EXP"`
-	DeleteBachSize     int    `env:DELETE_BACH_SIZE`
-	DeleteTimeDuration int    `env:DELETE_TIME_DURATION`
+	DeleteBachSize     int    `env:"DELETE_BACH_SIZE"`
+	DeleteTimeDuration int    `env:"DELETE_TIME_DURATION"`
 }
 
 // NewConfig create Config
