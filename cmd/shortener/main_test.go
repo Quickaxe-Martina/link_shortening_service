@@ -27,7 +27,8 @@ func TestGenerateURL(t *testing.T) {
 	storageData, err := storage.NewStorage(cfg)
 	assert.NoError(t, err)
 	deleteWorker := repository.NewDeleteURLsWorkers(storageData, 3, 2*time.Second, 50)
-	router := setupRouter(cfg, storageData, deleteWorker)
+	audit := repository.NewAuditPublisher(100)
+	router := setupRouter(cfg, storageData, deleteWorker, audit)
 	srv := httptest.NewServer(router)
 	defer srv.Close()
 
@@ -78,7 +79,8 @@ func TestRedirectURL(t *testing.T) {
 	storageData.SaveURL(context.TODO(), storage.URL{Code: "qwerty", URL: "https://example.com"})
 	assert.NoError(t, err)
 	deleteWorker := repository.NewDeleteURLsWorkers(storageData, 3, 2*time.Second, 50)
-	router := setupRouter(cfg, storageData, deleteWorker)
+	audit := repository.NewAuditPublisher(100)
+	router := setupRouter(cfg, storageData, deleteWorker, audit)
 	srv := httptest.NewServer(router)
 	defer srv.Close()
 
@@ -136,7 +138,8 @@ func TestJSONGenerateURL(t *testing.T) {
 	storageData, err := storage.NewStorage(cfg)
 	assert.NoError(t, err)
 	deleteWorker := repository.NewDeleteURLsWorkers(storageData, 3, 2*time.Second, 50)
-	router := setupRouter(cfg, storageData, deleteWorker)
+	audit := repository.NewAuditPublisher(100)
+	router := setupRouter(cfg, storageData, deleteWorker, audit)
 	srv := httptest.NewServer(router)
 	defer srv.Close()
 

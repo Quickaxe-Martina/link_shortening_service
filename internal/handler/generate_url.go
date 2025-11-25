@@ -10,6 +10,7 @@ import (
 
 	"github.com/Quickaxe-Martina/link_shortening_service/internal/logger"
 	"github.com/Quickaxe-Martina/link_shortening_service/internal/model"
+	"github.com/Quickaxe-Martina/link_shortening_service/internal/repository"
 	"github.com/Quickaxe-Martina/link_shortening_service/internal/service"
 	"github.com/Quickaxe-Martina/link_shortening_service/internal/storage"
 	"go.uber.org/zap"
@@ -24,6 +25,14 @@ func (h *Handler) GenerateURL(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Bad Request", http.StatusBadRequest)
 		return
 	}
+
+	h.audit.Publish(repository.AuditEvent{
+		TS:     time.Now().Unix(),
+		Action: "shorten",
+		UserID: user.ID,
+		URL:    string(body),
+	})
+
 	URLCode, err := service.GenerateRandomString(6)
 	if err != nil {
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
@@ -72,6 +81,13 @@ func (h *Handler) JSONGenerateURL(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
+
+	h.audit.Publish(repository.AuditEvent{
+		TS:     time.Now().Unix(),
+		Action: "shorten",
+		UserID: user.ID,
+		URL:    req.URL,
+	})
 
 	URLCode, err := service.GenerateRandomString(6)
 	if err != nil {

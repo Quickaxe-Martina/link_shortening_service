@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/Quickaxe-Martina/link_shortening_service/internal/logger"
+	"github.com/Quickaxe-Martina/link_shortening_service/internal/repository"
 	"github.com/Quickaxe-Martina/link_shortening_service/internal/storage"
 
 	"github.com/go-chi/chi/v5"
@@ -30,6 +31,12 @@ func (h *Handler) RedirectURL(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
+	h.audit.Publish(repository.AuditEvent{
+		TS:     time.Now().Unix(),
+		Action: "follow",
+		UserID: 0,
+		URL:    url.URL,
+	})
 	w.Header().Set("Location", url.URL)
 	w.WriteHeader(http.StatusTemporaryRedirect)
 }

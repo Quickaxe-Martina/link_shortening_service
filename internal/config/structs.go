@@ -12,6 +12,8 @@ type Config struct {
 	TokenExp           int    `env:"TOKEN_EXP"`
 	DeleteBachSize     int    `env:"DELETE_BACH_SIZE"`
 	DeleteTimeDuration int    `env:"DELETE_TIME_DURATION"`
+	AuditFile          string `env:"AUDIT_FILE"`
+	AuditURL           string `env:"AUDIT_URL"`
 }
 
 // NewConfig create Config
@@ -27,6 +29,8 @@ func NewConfig() *Config {
 		TokenExp:           3,
 		DeleteTimeDuration: 5,
 		DeleteBachSize:     50,
+		AuditFile:          "",
+		AuditURL:           "",
 	}
 	LoadEnv(&cfg)
 	ParseFlags(&cfg, true)

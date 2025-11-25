@@ -11,13 +11,15 @@ type Handler struct {
 	cfg          *config.Config
 	store        storage.Storage
 	deleteWorker *repository.DeleteURLsWorkers
+	audit        *repository.AuditPublisher
 }
 
 // NewHandler create Handler
-func NewHandler(cfg *config.Config, store storage.Storage, deleteWorker *repository.DeleteURLsWorkers) *Handler {
+func NewHandler(cfg *config.Config, store storage.Storage, deleteWorker *repository.DeleteURLsWorkers, audit *repository.AuditPublisher) *Handler {
 	return &Handler{
 		cfg:          cfg,
 		store:        store,
 		deleteWorker: deleteWorker,
+		audit:        audit,
 	}
 }
