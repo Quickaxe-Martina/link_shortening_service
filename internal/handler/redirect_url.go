@@ -2,10 +2,12 @@ package handler
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"time"
 
 	"github.com/Quickaxe-Martina/link_shortening_service/internal/logger"
+	"github.com/Quickaxe-Martina/link_shortening_service/internal/storage"
 
 	"github.com/go-chi/chi/v5"
 )
@@ -21,7 +23,11 @@ func (h *Handler) RedirectURL(w http.ResponseWriter, r *http.Request) {
 	defer cancel()
 	url, err := h.store.GetURL(ctx, URLCode)
 	if err != nil {
-		http.Error(w, "Bad Request", http.StatusBadRequest)
+		if errors.Is(err, storage.ErrURLDeleted) {
+			http.Error(w, "Status Gone", http.StatusGone)
+		} else {
+			http.Error(w, "Bad Request", http.StatusBadRequest)
+		}
 		return
 	}
 	w.Header().Set("Location", url.URL)

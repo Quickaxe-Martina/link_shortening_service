@@ -12,6 +12,7 @@ import (
 	_ "github.com/Quickaxe-Martina/link_shortening_service/internal/logger" // logger
 	"github.com/jackc/pgerrcode"
 	"github.com/jackc/pgx/v5/pgconn"
+	"github.com/lib/pq"
 )
 
 // PostgresStorage is DB implementation of the Storage interface
@@ -36,7 +37,12 @@ func NewPostgresStorage(cfg *config.Config) *PostgresStorage {
 
 // SaveURL save a URL by code in DB
 func (store *PostgresStorage) SaveURL(ctx context.Context, u URL) error {
-	_, err := store.DB.ExecContext(ctx, "INSERT INTO urls (code, url) VALUES ($1, $2)", u.Code, u.URL)
+	userID := sql.NullInt64{}
+	if u.UserID != 0 {
+		userID.Int64 = int64(u.UserID)
+		userID.Valid = true
+	}
+	_, err := store.DB.ExecContext(ctx, "INSERT INTO urls (code, url, user_id) VALUES ($1, $2, $3)", u.Code, u.URL, userID)
 	if err != nil {
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) {
@@ -58,30 +64,38 @@ func (store *PostgresStorage) SaveURL(ctx context.Context, u URL) error {
 
 // GetURL get URL by code from DB
 func (store *PostgresStorage) GetURL(ctx context.Context, code string) (URL, error) {
-	row := store.DB.QueryRowContext(ctx, "SELECT url FROM urls WHERE code = $1", code)
+	row := store.DB.QueryRowContext(ctx, "SELECT url, is_deleted FROM urls WHERE code = $1", code)
 	var url string
-	if err := row.Scan(&url); err != nil {
+	var isDeleted bool
+	if err := row.Scan(&url, &isDeleted); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return URL{}, fmt.Errorf("url with code %s not found", code)
 		}
 		return URL{}, err
 	}
+	if isDeleted {
+		return URL{}, ErrURLDeleted
+	}
 
-	return URL{Code: code, URL: url}, nil
+	return URL{Code: code, URL: url, isDeleted: isDeleted}, nil
 }
 
 // GetByURL get URL by url from DB
 func (store *PostgresStorage) GetByURL(ctx context.Context, url string) (URL, error) {
-	row := store.DB.QueryRowContext(ctx, "SELECT code FROM urls WHERE url = $1", url)
+	row := store.DB.QueryRowContext(ctx, "SELECT code, is_deleted FROM urls WHERE url = $1", url)
 	var code string
-	if err := row.Scan(&code); err != nil {
+	var isDeleted bool
+	if err := row.Scan(&code, &isDeleted); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return URL{}, fmt.Errorf("url with url %s not found", url)
 		}
 		return URL{}, err
 	}
+	if isDeleted {
+		return URL{}, ErrURLDeleted
+	}
 
-	return URL{Code: code, URL: url}, nil
+	return URL{Code: code, URL: url, isDeleted: isDeleted}, nil
 }
 
 // Close releases resources
@@ -101,7 +115,7 @@ func (store *PostgresStorage) Ping(ctx context.Context) error {
 // AllURLs returns all URLs
 func (store *PostgresStorage) AllURLs(ctx context.Context) ([]URL, error) {
 	// TODO
-	return []URL{}, nil
+	return []URL{}, ErrNotImplemented
 }
 
 // SaveBatchURL save list of URL
@@ -125,4 +139,54 @@ func (store *PostgresStorage) SaveBatchURL(ctx context.Context, urls []URL) erro
 		}
 	}
 	return tx.Commit()
+}
+
+// CreateUser creates a new user and returns it
+func (store *PostgresStorage) CreateUser(ctx context.Context) (User, error) {
+	var id int
+	err := store.DB.QueryRowContext(ctx, "INSERT INTO users DEFAULT VALUES RETURNING id").Scan(&id)
+	if err != nil {
+		return User{}, err
+	}
+	return User{ID: int(id)}, nil
+}
+
+// GetURLsByUserID returns all URLs associated with a specific user ID
+func (store *PostgresStorage) GetURLsByUserID(ctx context.Context, userID int) ([]URL, error) {
+	rows, err := store.DB.QueryContext(ctx, "SELECT code, url FROM urls WHERE user_id = $1 AND is_deleted=FALSE", userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var urls []URL
+	for rows.Next() {
+		var url URL
+		if err := rows.Scan(&url.Code, &url.URL); err != nil {
+			return nil, err
+		}
+		url.UserID = userID
+		urls = append(urls, url)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return urls, nil
+}
+
+// GetAllUsers returns all users
+func (store *PostgresStorage) GetAllUsers(ctx context.Context) ([]User, error) {
+	return nil, ErrNotImplemented
+}
+
+// DeleteUserURLs marks user's URLs as deleted.
+// Security: ensures only URLs belonging to the given userID are affected.
+func (store *PostgresStorage) DeleteUserURLs(ctx context.Context, userID int, codes []string) error {
+	query := `
+        UPDATE urls
+        SET is_deleted = TRUE
+        WHERE user_id = $1 AND code = ANY($2::text[]);
+    `
+	_, err := store.DB.ExecContext(ctx, query, userID, pq.Array(codes))
+	return err
 }

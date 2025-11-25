@@ -64,6 +64,9 @@ jobs:
         run: |
           cd cmd/shortener
           go build -buildvcs=false -o shortener
+      - name: Build wipedb_cascade
+        run: |
+          go build -buildvcs=false -o cmd/wipedb/wipedb_cascade cmd/wipedb/wipedb.go
 
       - name: "Code increment #1"
         if: |
@@ -337,7 +340,8 @@ jobs:
               -binary-path=cmd/shortener/shortener \
               -source-path=. \
               -database-dsn=$DATABASE_CONN_STRING
-          wipedb $DATABASE_CONN_STRING
+          ls -la
+          cmd/wipedb/wipedb_cascade $DATABASE_CONN_STRING
 
       - name: "Code increment #11"
         if: |
@@ -360,7 +364,7 @@ jobs:
           shortenertestbeta -test.v -test.run=^TestIteration11$ \
               -binary-path=cmd/shortener/shortener \
               -database-dsn=$DATABASE_CONN_STRING
-          wipedb $DATABASE_CONN_STRING
+          cmd/wipedb/wipedb_cascade $DATABASE_CONN_STRING
 
       - name: "Code increment #12"
         if: |
@@ -382,7 +386,7 @@ jobs:
           shortenertestbeta -test.v -test.run=^TestIteration12$ \
               -binary-path=cmd/shortener/shortener \
               -database-dsn=$DATABASE_CONN_STRING
-          wipedb $DATABASE_CONN_STRING
+          cmd/wipedb/wipedb_cascade $DATABASE_CONN_STRING
 
       - name: "Code increment #13"
         if: |
@@ -403,7 +407,7 @@ jobs:
           shortenertestbeta -test.v -test.run=^TestIteration13$ \
               -binary-path=cmd/shortener/shortener \
               -database-dsn=$DATABASE_CONN_STRING
-          wipedb $DATABASE_CONN_STRING
+          cmd/wipedb/wipedb_cascade $DATABASE_CONN_STRING
 
       - name: "Code increment #14"
         if: |
@@ -423,7 +427,7 @@ jobs:
           shortenertestbeta -test.v -test.run=^TestIteration14$ \
               -binary-path=cmd/shortener/shortener \
               -database-dsn=$DATABASE_CONN_STRING
-          wipedb $DATABASE_CONN_STRING
+          cmd/wipedb/wipedb_cascade $DATABASE_CONN_STRING
 
       - name: "Code increment #15"
         if: |
@@ -442,7 +446,7 @@ jobs:
           shortenertestbeta -test.v -test.run=^TestIteration15$ \
               -binary-path=cmd/shortener/shortener \
               -database-dsn=$DATABASE_CONN_STRING
-          wipedb $DATABASE_CONN_STRING
+          cmd/wipedb/wipedb_cascade $DATABASE_CONN_STRING
 
       - name: "Code increment #16"
         if: |

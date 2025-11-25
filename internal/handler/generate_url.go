@@ -17,6 +17,8 @@ import (
 
 // GenerateURL handles HTTP requests to create a shortened URL.
 func (h *Handler) GenerateURL(w http.ResponseWriter, r *http.Request) {
+	user := GetUser(r.Context())
+
 	body, err := io.ReadAll(r.Body)
 	if err != nil || len(body) == 0 {
 		http.Error(w, "Bad Request", http.StatusBadRequest)
@@ -31,7 +33,7 @@ func (h *Handler) GenerateURL(w http.ResponseWriter, r *http.Request) {
 	logger.Log.Info("URL code", zap.String("URLCode", URLCode))
 	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 	defer cancel()
-	if err := h.store.SaveURL(ctx, storage.URL{Code: URLCode, URL: string(body)}); err != nil {
+	if err := h.store.SaveURL(ctx, storage.URL{Code: URLCode, URL: string(body), UserID: user.ID}); err != nil {
 		if errors.Is(err, storage.ErrURLAlreadyExists) {
 			url, err := h.store.GetByURL(ctx, string(body))
 			if err != nil {
@@ -55,6 +57,8 @@ func (h *Handler) GenerateURL(w http.ResponseWriter, r *http.Request) {
 
 // JSONGenerateURL handles HTTP JSON requests to create a shortened URL.
 func (h *Handler) JSONGenerateURL(w http.ResponseWriter, r *http.Request) {
+	user := GetUser(r.Context())
+
 	var req model.JSONGenerateURLRequest
 	dec := json.NewDecoder(r.Body)
 	if err := dec.Decode(&req); err != nil {
@@ -79,7 +83,7 @@ func (h *Handler) JSONGenerateURL(w http.ResponseWriter, r *http.Request) {
 
 	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 	defer cancel()
-	if err := h.store.SaveURL(ctx, storage.URL{Code: URLCode, URL: req.URL}); err != nil {
+	if err := h.store.SaveURL(ctx, storage.URL{Code: URLCode, URL: req.URL, UserID: user.ID}); err != nil {
 		if errors.Is(err, storage.ErrURLAlreadyExists) {
 			logger.Log.Info("ErrURLAlreadyExists")
 			url, err := h.store.GetByURL(ctx, req.URL)
@@ -114,7 +118,7 @@ func (h *Handler) JSONGenerateURL(w http.ResponseWriter, r *http.Request) {
 	resp := model.JSONGenerateURLResponse{
 		Result: h.cfg.ServerAddr + URLCode,
 	}
-	// сериализуем ответ сервера
+
 	enc := json.NewEncoder(w)
 	if err := enc.Encode(resp); err != nil {
 		logger.Log.Error("error encoding response", zap.Error(err))

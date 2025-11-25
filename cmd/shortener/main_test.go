@@ -9,9 +9,11 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"testing"
+	"time"
 
 	"github.com/Quickaxe-Martina/link_shortening_service/internal/config"
 	"github.com/Quickaxe-Martina/link_shortening_service/internal/model"
+	"github.com/Quickaxe-Martina/link_shortening_service/internal/repository"
 	"github.com/Quickaxe-Martina/link_shortening_service/internal/storage"
 	"github.com/go-resty/resty/v2"
 	"github.com/stretchr/testify/assert"
@@ -24,7 +26,8 @@ func TestGenerateURL(t *testing.T) {
 	}
 	storageData, err := storage.NewStorage(cfg)
 	assert.NoError(t, err)
-	router := setupRouter(cfg, storageData)
+	deleteWorker := repository.NewDeleteURLsWorkers(storageData, 3, 2*time.Second, 50)
+	router := setupRouter(cfg, storageData, deleteWorker)
 	srv := httptest.NewServer(router)
 	defer srv.Close()
 
@@ -71,10 +74,11 @@ func TestRedirectURL(t *testing.T) {
 		RunAddr:    ":8080",
 		ServerAddr: "http://localhost:8080/",
 	}
-	store, err := storage.NewStorage(cfg)
+	storageData, err := storage.NewStorage(cfg)
+	storageData.SaveURL(context.TODO(), storage.URL{Code: "qwerty", URL: "https://example.com"})
 	assert.NoError(t, err)
-	store.SaveURL(context.TODO(), storage.URL{Code: "qwerty", URL: "https://example.com"})
-	router := setupRouter(cfg, store)
+	deleteWorker := repository.NewDeleteURLsWorkers(storageData, 3, 2*time.Second, 50)
+	router := setupRouter(cfg, storageData, deleteWorker)
 	srv := httptest.NewServer(router)
 	defer srv.Close()
 
@@ -131,7 +135,8 @@ func TestJSONGenerateURL(t *testing.T) {
 	}
 	storageData, err := storage.NewStorage(cfg)
 	assert.NoError(t, err)
-	router := setupRouter(cfg, storageData)
+	deleteWorker := repository.NewDeleteURLsWorkers(storageData, 3, 2*time.Second, 50)
+	router := setupRouter(cfg, storageData, deleteWorker)
 	srv := httptest.NewServer(router)
 	defer srv.Close()
 
