@@ -29,7 +29,7 @@ func NewConfig() *Config {
 		TokenExp:           3,
 		DeleteTimeDuration: 5,
 		DeleteBachSize:     50,
-		AuditFile:          "",
+		AuditFile:          "./audit_data.json",
 		AuditURL:           "",
 	}
 	LoadEnv(&cfg)
