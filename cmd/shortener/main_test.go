@@ -19,20 +19,30 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestGenerateURL(t *testing.T) {
+func setupTestServer(t *testing.T) (*resty.Client, *httptest.Server, *config.Config) {
 	cfg := &config.Config{
 		RunAddr:    ":8080",
 		ServerAddr: "http://localhost:8080/",
 	}
 	storageData, err := storage.NewStorage(cfg)
 	assert.NoError(t, err)
+
+	storageData.SaveURL(context.TODO(), storage.URL{Code: "qwerty", URL: "https://example.com"})
+
 	deleteWorker := repository.NewDeleteURLsWorkers(storageData, 3, 2*time.Second, 50)
 	audit := repository.NewAuditPublisher(100)
 	router := setupRouter(cfg, storageData, deleteWorker, audit)
 	srv := httptest.NewServer(router)
-	defer srv.Close()
 
 	client := resty.New()
+	client.SetRedirectPolicy(resty.NoRedirectPolicy())
+
+	return client, srv, cfg
+}
+
+func TestGenerateURL(t *testing.T) {
+	client, srv, cfg := setupTestServer(t)
+	defer srv.Close()
 
 	tests := []struct {
 		name        string
@@ -71,20 +81,9 @@ func TestGenerateURL(t *testing.T) {
 }
 
 func TestRedirectURL(t *testing.T) {
-	cfg := &config.Config{
-		RunAddr:    ":8080",
-		ServerAddr: "http://localhost:8080/",
-	}
-	storageData, err := storage.NewStorage(cfg)
-	storageData.SaveURL(context.TODO(), storage.URL{Code: "qwerty", URL: "https://example.com"})
-	assert.NoError(t, err)
-	deleteWorker := repository.NewDeleteURLsWorkers(storageData, 3, 2*time.Second, 50)
-	audit := repository.NewAuditPublisher(100)
-	router := setupRouter(cfg, storageData, deleteWorker, audit)
-	srv := httptest.NewServer(router)
+	client, srv, _ := setupTestServer(t)
 	defer srv.Close()
 
-	client := resty.New()
 	client.SetRedirectPolicy(resty.NoRedirectPolicy())
 
 	tests := []struct {
@@ -131,19 +130,8 @@ func TestRedirectURL(t *testing.T) {
 }
 
 func TestJSONGenerateURL(t *testing.T) {
-	cfg := &config.Config{
-		RunAddr:    ":8080",
-		ServerAddr: "http://localhost:8080/",
-	}
-	storageData, err := storage.NewStorage(cfg)
-	assert.NoError(t, err)
-	deleteWorker := repository.NewDeleteURLsWorkers(storageData, 3, 2*time.Second, 50)
-	audit := repository.NewAuditPublisher(100)
-	router := setupRouter(cfg, storageData, deleteWorker, audit)
-	srv := httptest.NewServer(router)
+	client, srv, cfg := setupTestServer(t)
 	defer srv.Close()
-
-	client := resty.New()
 
 	tests := []struct {
 		name       string

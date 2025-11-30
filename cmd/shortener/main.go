@@ -8,6 +8,8 @@ import (
 	"syscall"
 	"time"
 
+	_ "net/http/pprof"
+
 	"github.com/Quickaxe-Martina/link_shortening_service/internal/config"
 	"github.com/Quickaxe-Martina/link_shortening_service/internal/handler"
 	"github.com/Quickaxe-Martina/link_shortening_service/internal/logger"
@@ -42,6 +44,11 @@ func setupRouter(cfg *config.Config, store storage.Storage, deleteWorker *reposi
 }
 
 func main() {
+	// Запустим HTTP-сервер для обработки запросов на профилирование
+	go func() {
+		log.Println(http.ListenAndServe("localhost:6060", nil))
+	}()
+
 	cfg := config.NewConfig()
 	store, err := storage.NewStorage(cfg)
 	if err != nil {

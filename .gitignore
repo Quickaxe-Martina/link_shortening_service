@@ -34,3 +34,4 @@ shortenertestbeta
 tests.sh
 cmd/wipedb/wipedb
 audit_data.json
+hey_linux_amd64

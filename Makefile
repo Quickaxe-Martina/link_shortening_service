@@ -5,7 +5,7 @@ GO_IMPORTS_BIN=$(shell go env GOPATH)/bin/goimports
 
 start:
 	@$(GO_IMPORTS_BIN) -w .
-	@go run ./cmd/shortener/main.go -d="host=127.0.0.1 port=5469 user=test password=test dbname=test sslmode=disable"
+	@go run ./cmd/shortener/main.go -d="host=127.0.0.1 port=5432 user=test password=test dbname=test sslmode=disable"
 
 start-memory:
 	@$(GO_IMPORTS_BIN) -w .
