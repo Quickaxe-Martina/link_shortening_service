@@ -19,13 +19,15 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func setupTestServer(t *testing.T) (*resty.Client, *httptest.Server, *config.Config) {
+func setupTestServer() (*resty.Client, *httptest.Server, *config.Config) {
 	cfg := &config.Config{
 		RunAddr:    ":8080",
 		ServerAddr: "http://localhost:8080/",
 	}
 	storageData, err := storage.NewStorage(cfg)
-	assert.NoError(t, err)
+	if err != nil {
+		panic(err)
+	}
 
 	storageData.SaveURL(context.TODO(), storage.URL{Code: "qwerty", URL: "https://example.com"})
 
@@ -41,7 +43,7 @@ func setupTestServer(t *testing.T) (*resty.Client, *httptest.Server, *config.Con
 }
 
 func TestGenerateURL(t *testing.T) {
-	client, srv, cfg := setupTestServer(t)
+	client, srv, cfg := setupTestServer()
 	defer srv.Close()
 
 	tests := []struct {
@@ -81,7 +83,7 @@ func TestGenerateURL(t *testing.T) {
 }
 
 func TestRedirectURL(t *testing.T) {
-	client, srv, _ := setupTestServer(t)
+	client, srv, _ := setupTestServer()
 	defer srv.Close()
 
 	client.SetRedirectPolicy(resty.NoRedirectPolicy())
@@ -130,7 +132,7 @@ func TestRedirectURL(t *testing.T) {
 }
 
 func TestJSONGenerateURL(t *testing.T) {
-	client, srv, cfg := setupTestServer(t)
+	client, srv, cfg := setupTestServer()
 	defer srv.Close()
 
 	tests := []struct {

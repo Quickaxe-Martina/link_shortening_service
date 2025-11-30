@@ -8,13 +8,13 @@ import (
 	"go.uber.org/zap"
 )
 
-// RemoteAuditObserver todo
+// RemoteAuditObserver sends audit events to a remote HTTP endpoint.
 type RemoteAuditObserver struct {
 	client *resty.Client
 	url    string
 }
 
-// NewRemoteAuditObserver todo
+// NewRemoteAuditObserver creates a new RemoteAuditObserver for the given URL.
 func NewRemoteAuditObserver(url string) *RemoteAuditObserver {
 	return &RemoteAuditObserver{
 		client: resty.New(),
@@ -22,7 +22,7 @@ func NewRemoteAuditObserver(url string) *RemoteAuditObserver {
 	}
 }
 
-// Notify todo
+// Notify sends the audit event to the configured remote endpoint.
 func (a *RemoteAuditObserver) Notify(event AuditEvent) {
 	body, _ := json.Marshal(event)
 

@@ -10,10 +10,12 @@ import (
 	"github.com/go-resty/resty/v2"
 )
 
+// JSONGenerateURLRequest model
 type JSONGenerateURLRequest struct {
 	URL string `json:"url"`
 }
 
+// JSONGenerateURLResponse model
 type JSONGenerateURLResponse struct {
 	Result string `json:"result"`
 }

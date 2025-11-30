@@ -8,7 +8,7 @@ import (
 	"github.com/Quickaxe-Martina/link_shortening_service/internal/logger"
 )
 
-// AuditEvent todo
+// AuditEvent represents a user action event for auditing purposes.
 type AuditEvent struct {
 	TS     int64  `json:"ts"`
 	Action string `json:"action"`
@@ -16,7 +16,7 @@ type AuditEvent struct {
 	URL    string `json:"url"`
 }
 
-// MarshalJSON todo
+// MarshalJSON customizes JSON serialization for AuditEvent.
 func (e AuditEvent) MarshalJSON() ([]byte, error) {
 	type Alias AuditEvent
 	return json.Marshal(&struct {
@@ -28,12 +28,12 @@ func (e AuditEvent) MarshalJSON() ([]byte, error) {
 	})
 }
 
-// AuditObserver todo
+// AuditObserver defines an interface for receiving audit events.
 type AuditObserver interface {
 	Notify(event AuditEvent)
 }
 
-// AuditPublisher todo
+// AuditPublisher publishes audit events to registered observers.
 type AuditPublisher struct {
 	observers []AuditObserver
 	ch        chan AuditEvent
@@ -41,7 +41,7 @@ type AuditPublisher struct {
 	wg        sync.WaitGroup
 }
 
-// NewAuditPublisher todo
+// NewAuditPublisher creates a new AuditPublisher with a buffered channel.
 func NewAuditPublisher(buffer int) *AuditPublisher {
 	p := &AuditPublisher{
 		ch:     make(chan AuditEvent, buffer),
@@ -52,17 +52,17 @@ func NewAuditPublisher(buffer int) *AuditPublisher {
 	return p
 }
 
-// Register todo
+// Register adds a new observer to receive audit events.
 func (p *AuditPublisher) Register(obs AuditObserver) {
 	p.observers = append(p.observers, obs)
 }
 
-// Publish todo
+// Publish sends an audit event to all registered observers asynchronously.
 func (p *AuditPublisher) Publish(event AuditEvent) {
 	p.ch <- event
 }
 
-// Stop end workers work
+// Stop signals the worker to stop and waits for all events to be processed.
 func (p *AuditPublisher) Stop() {
 	close(p.doneCh)
 	p.wg.Wait()

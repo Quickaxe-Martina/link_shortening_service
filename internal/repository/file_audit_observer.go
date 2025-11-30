@@ -8,17 +8,17 @@ import (
 	"go.uber.org/zap"
 )
 
-// FileAuditObserver todo
+// FileAuditObserver writes audit events to a file.
 type FileAuditObserver struct {
 	filePath string
 }
 
-// NewFileAuditObserver todo
+// NewFileAuditObserver creates a new FileAuditObserver for the given file path.
 func NewFileAuditObserver(path string) *FileAuditObserver {
 	return &FileAuditObserver{filePath: path}
 }
 
-// Notify todo
+// Notify appends an audit event to the file in JSON format.
 func (a *FileAuditObserver) Notify(event AuditEvent) {
 	file, err := os.OpenFile(a.filePath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
