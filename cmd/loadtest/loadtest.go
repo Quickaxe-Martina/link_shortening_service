@@ -37,7 +37,6 @@ func main() {
 
 	var wg sync.WaitGroup
 
-
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
@@ -45,7 +44,6 @@ func main() {
 			doGenerate(client, target, codes)
 		})
 	}()
-
 
 	wg.Add(1)
 	go func() {
@@ -55,7 +53,6 @@ func main() {
 		})
 	}()
 
-
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
@@ -64,7 +61,6 @@ func main() {
 
 	wg.Wait()
 }
-
 
 func runLoad(requests, workers int, fn func()) {
 	var wg sync.WaitGroup
@@ -102,7 +98,6 @@ func runRedirectLoad(workers int, client *resty.Client, target string, codes <-c
 
 	wg.Wait()
 }
-
 
 func doGenerate(client *resty.Client, target string, out chan<- string) {
 	url := fmt.Sprintf("https://p-%d.com", time.Now().UnixNano())
