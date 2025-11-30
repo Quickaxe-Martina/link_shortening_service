@@ -44,7 +44,7 @@ func setupRouter(cfg *config.Config, store storage.Storage, deleteWorker *reposi
 }
 
 func main() {
-	// Запустим HTTP-сервер для обработки запросов на профилирование
+	// pprof
 	go func() {
 		log.Println(http.ListenAndServe("localhost:6060", nil))
 	}()
