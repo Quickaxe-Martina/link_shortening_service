@@ -1,3 +1,6 @@
+/*
+Package handler for handlers
+*/
 package handler
 
 import (

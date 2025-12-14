@@ -1,3 +1,6 @@
+/*
+Package config for config
+*/
 package config
 
 // Config variables

@@ -1,3 +1,6 @@
+/*
+Package storage for storages
+*/
 package storage
 
 import (

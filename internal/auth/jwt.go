@@ -1,3 +1,6 @@
+/*
+Package auth for auth
+*/
 package auth
 
 import (
@@ -103,11 +106,12 @@ func GetOrCreateUser(w http.ResponseWriter, r *http.Request, store storage.Stora
 	user, err := GetUserByCookie(r, secretKey)
 	if err != nil {
 		if errors.Is(err, ErrNoJWTInCookie) || errors.Is(err, ErrInvalidJWTToken) {
+			var tokenString string
 			user, err = store.CreateUser(r.Context())
 			if err != nil {
 				return storage.User{}, err
 			}
-			tokenString, err := BuildJWTString(secretKey, tokenExp, user.ID)
+			tokenString, err = BuildJWTString(secretKey, tokenExp, user.ID)
 			if err != nil {
 				return storage.User{}, err
 			}

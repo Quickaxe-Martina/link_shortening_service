@@ -1,3 +1,6 @@
+/*
+Package model for models
+*/
 package model
 
 import (

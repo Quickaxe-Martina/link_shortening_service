@@ -44,7 +44,8 @@ func (h *Handler) GenerateURL(w http.ResponseWriter, r *http.Request) {
 	defer cancel()
 	if err := h.store.SaveURL(ctx, storage.URL{Code: URLCode, URL: string(body), UserID: user.ID}); err != nil {
 		if errors.Is(err, storage.ErrURLAlreadyExists) {
-			url, err := h.store.GetByURL(ctx, string(body))
+			var url storage.URL
+			url, err = h.store.GetByURL(ctx, string(body))
 			if err != nil {
 				logger.Log.Error("error get by url", zap.Error(err))
 				http.Error(w, "Internal Server Error", http.StatusInternalServerError)
@@ -102,7 +103,8 @@ func (h *Handler) JSONGenerateURL(w http.ResponseWriter, r *http.Request) {
 	if err := h.store.SaveURL(ctx, storage.URL{Code: URLCode, URL: req.URL, UserID: user.ID}); err != nil {
 		if errors.Is(err, storage.ErrURLAlreadyExists) {
 			logger.Log.Info("ErrURLAlreadyExists")
-			url, err := h.store.GetByURL(ctx, req.URL)
+			var url storage.URL
+			url, err = h.store.GetByURL(ctx, req.URL)
 			if err != nil {
 				logger.Log.Error("error get by url", zap.Error(err))
 				http.Error(w, "Internal Server Error", http.StatusInternalServerError)
@@ -116,7 +118,7 @@ func (h *Handler) JSONGenerateURL(w http.ResponseWriter, r *http.Request) {
 				Result: h.cfg.ServerAddr + url.Code,
 			}
 			enc := json.NewEncoder(w)
-			if err := enc.Encode(resp); err != nil {
+			if err = enc.Encode(resp); err != nil {
 				logger.Log.Error("error encoding response", zap.Error(err))
 				http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 				return
