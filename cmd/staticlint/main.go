@@ -32,12 +32,12 @@ var noOsExitAnalyzer = &analysis.Analyzer{
 
 func runNoOsExit(pass *analysis.Pass) (any, error) {
 	if strings.HasSuffix(pass.Pkg.Path(), ".test") {
-        return nil, nil
-    }
+		return nil, nil
+	}
 
-    if pass.Pkg.Name() != "main" {
-        return nil, nil
-    }
+	if pass.Pkg.Name() != "main" {
+		return nil, nil
+	}
 	for _, file := range pass.Files {
 
 		ast.Inspect(file, func(n ast.Node) bool {
