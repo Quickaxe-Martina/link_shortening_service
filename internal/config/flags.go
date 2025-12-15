@@ -11,6 +11,8 @@ func ParseFlags(cfg *Config, onlyEmpty bool) {
 	var serverAddr = "http://localhost:8080/"
 	var dataFilePath string
 	var databaseDsn string
+	var auditFile string
+	var auditURL string
 
 	flag.StringVar(&runAddr, "a", ":8080", "address and port to run server")
 	flag.StringVar(&dataFilePath, "f", "", "saved urls path")
@@ -25,6 +27,8 @@ func ParseFlags(cfg *Config, onlyEmpty bool) {
 		serverAddr = s
 		return nil
 	})
+	flag.StringVar(&auditFile, "audit-file", "", "path to audit file")
+	flag.StringVar(&auditURL, "audit-url", "", "remote audit receiver URL")
 	flag.Parse()
 	if onlyEmpty && cfg.RunAddr == "" {
 		cfg.RunAddr = runAddr
@@ -37,5 +41,11 @@ func ParseFlags(cfg *Config, onlyEmpty bool) {
 	}
 	if onlyEmpty && cfg.DatabaseDsn == "" {
 		cfg.DatabaseDsn = databaseDsn
+	}
+	if onlyEmpty && cfg.AuditFile == "" {
+		cfg.AuditFile = auditFile
+	}
+	if onlyEmpty && cfg.AuditURL == "" {
+		cfg.AuditURL = auditURL
 	}
 }
