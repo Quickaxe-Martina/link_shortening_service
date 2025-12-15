@@ -1,7 +1,9 @@
 package main
 
 import (
+	"context"
 	"log"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
@@ -17,6 +19,7 @@ import (
 	"github.com/Quickaxe-Martina/link_shortening_service/internal/storage"
 	"github.com/go-chi/chi/v5"
 	"go.uber.org/zap"
+	"golang.org/x/sync/errgroup"
 )
 
 func setupRouter(cfg *config.Config, store storage.Storage, deleteWorker *repository.DeleteURLsWorkers, audit *repository.AuditPublisher) *chi.Mux {
@@ -44,44 +47,88 @@ func setupRouter(cfg *config.Config, store storage.Storage, deleteWorker *reposi
 }
 
 func main() {
+	mainCtx, stop := signal.NotifyContext(
+		context.Background(),
+		os.Interrupt,
+		syscall.SIGTERM,
+	)
+	defer stop()
+
 	// pprof
 	go func() {
 		log.Println(http.ListenAndServe("localhost:6060", nil))
 	}()
 
 	cfg := config.NewConfig()
-	store, err := storage.NewStorage(cfg)
-	if err != nil {
-		logger.Log.Error("Storage error", zap.Error(err))
+
+	if err := logger.Initialize("info"); err != nil {
+		log.Panic(err)
 	}
 
-	deleteWorker := repository.NewDeleteURLsWorkers(store, 3, time.Duration(cfg.DeleteTimeDuration), cfg.DeleteBachSize)
+	store, err := storage.NewStorage(cfg)
+	if err != nil {
+		logger.Log.Fatal("storage init error", zap.Error(err))
+	}
+
+	deleteWorker := repository.NewDeleteURLsWorkers(
+		store,
+		3,
+		time.Duration(cfg.DeleteTimeDuration),
+		cfg.DeleteBachSize,
+	)
 
 	audit := repository.NewAuditPublisher(100)
 
 	if cfg.AuditFile != "" {
 		audit.Register(repository.NewFileAuditObserver(cfg.AuditFile))
 	}
-
 	if cfg.AuditURL != "" {
 		audit.Register(repository.NewRemoteAuditObserver(cfg.AuditURL))
 	}
 
-	if err := logger.Initialize("info"); err != nil {
-		log.Panic(err)
-	}
 	r := setupRouter(cfg, store, deleteWorker, audit)
 
-	// Обработчик завершения (Ctrl+C, SIGTERM и т.п.)
-	go func() {
-		ch := make(chan os.Signal, 1)
-		signal.Notify(ch, syscall.SIGINT, syscall.SIGTERM)
-		<-ch
-		store.Close()
+	httpServer := &http.Server{
+		Addr:    cfg.RunAddr,
+		Handler: r,
+		BaseContext: func(_ net.Listener) context.Context {
+			return mainCtx
+		},
+	}
+
+	g, gCtx := errgroup.WithContext(mainCtx)
+
+	// HTTP server
+	g.Go(func() error {
+		logger.Log.Info("HTTP server started", zap.String("addr", cfg.RunAddr))
+		if err := httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			return err
+		}
+		return nil
+	})
+
+	// Graceful shutdown
+	g.Go(func() error {
+		<-gCtx.Done()
+
+		logger.Log.Info("shutdown signal received")
+
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+
+		if err := httpServer.Shutdown(shutdownCtx); err != nil {
+			logger.Log.Error("http shutdown error", zap.Error(err))
+		}
+
 		deleteWorker.Stop()
 		audit.Stop()
-		os.Exit(0)
-	}()
+		store.Close()
 
-	logger.Log.Fatal("", zap.Error(http.ListenAndServe(cfg.RunAddr, r)))
+		logger.Log.Info("graceful shutdown completed")
+		return nil
+	})
+
+	if err := g.Wait(); err != nil {
+		logger.Log.Error("server exited with error", zap.Error(err))
+	}
 }

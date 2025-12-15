@@ -7,13 +7,13 @@ package main
 
 import (
 	"go/ast"
+	"strings"
 
 	"golang.org/x/tools/go/analysis"
 	"golang.org/x/tools/go/analysis/multichecker"
 
 	"golang.org/x/tools/go/analysis/passes/assign"
 	"golang.org/x/tools/go/analysis/passes/atomic"
-	"golang.org/x/tools/go/analysis/passes/inspect"
 	"golang.org/x/tools/go/analysis/passes/printf"
 	"golang.org/x/tools/go/analysis/passes/shadow"
 	"golang.org/x/tools/go/analysis/passes/structtag"
@@ -25,27 +25,20 @@ import (
 
 // noOsExitAnalyzer запрещает прямой вызов os.Exit в функции main пакета main.
 var noOsExitAnalyzer = &analysis.Analyzer{
-	Name: "noosexit",
-	Doc: `Запрещает использование os.Exit в функции main пакета main.
-
-Использование os.Exit в main нарушает корректное завершение программы:
-- не выполняются deferred-вызовы
-- усложняется тестирование
-- ухудшается читаемость
-
-Рекомендуется возвращать код ошибки из main через логирование или обработку ошибок.`,
-	Requires: []*analysis.Analyzer{
-		inspect.Analyzer,
-	},
-	Run: runNoOsExit,
+	Name: "noOsExit",
+	Doc:  "Запрещает использование os.Exit в функции main пакета main.",
+	Run:  runNoOsExit,
 }
 
 func runNoOsExit(pass *analysis.Pass) (any, error) {
+	if strings.HasSuffix(pass.Pkg.Path(), ".test") {
+        return nil, nil
+    }
+
+    if pass.Pkg.Name() != "main" {
+        return nil, nil
+    }
 	for _, file := range pass.Files {
-		// проверяем пакет main
-		if pass.Pkg.Name() != "main" {
-			continue
-		}
 
 		ast.Inspect(file, func(n ast.Node) bool {
 			fn, ok := n.(*ast.FuncDecl)
@@ -87,7 +80,6 @@ func runNoOsExit(pass *analysis.Pass) (any, error) {
 func main() {
 	var analyzers []*analysis.Analyzer
 
-	// Стандартные анализаторы golang.org/x/tools
 	analyzers = append(analyzers,
 		assign.Analyzer,
 		atomic.Analyzer,
@@ -96,14 +88,12 @@ func main() {
 		structtag.Analyzer,
 	)
 
-	// Все анализаторы класса SA (staticcheck)
 	for _, a := range staticcheck.Analyzers {
 		if a.Analyzer.Name[:2] == "SA" {
 			analyzers = append(analyzers, a.Analyzer)
 		}
 	}
 
-	// Анализаторы других классов staticcheck
 	for _, a := range simple.Analyzers {
 		analyzers = append(analyzers, a.Analyzer)
 	}
@@ -111,7 +101,6 @@ func main() {
 		analyzers = append(analyzers, a.Analyzer)
 	}
 
-	// Собственный анализатор
 	analyzers = append(analyzers, noOsExitAnalyzer)
 
 	multichecker.Main(analyzers...)
