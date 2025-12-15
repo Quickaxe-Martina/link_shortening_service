@@ -3,8 +3,8 @@ Package config for config
 */
 package config
 
-// generate:reset
 // Config variables
+// generate:reset
 type Config struct {
 	RunAddr            string `env:"SERVER_ADDRESS"`
 	ServerAddr         string `env:"BASE_URL"`

@@ -15,12 +15,14 @@ import (
 // ErrWorkerStopped woker stopped
 var ErrWorkerStopped = errors.New("woker stopped")
 
+// generate:reset
 type deleteURLsTask struct {
 	UserID int
 	Codes  []string
 }
 
 // DeleteURLsWorkers struct
+// generate:reset
 type DeleteURLsWorkers struct {
 	store      storage.Storage
 	inputCh    chan deleteURLsTask

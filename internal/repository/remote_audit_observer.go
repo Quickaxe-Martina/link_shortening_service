@@ -12,6 +12,7 @@ import (
 )
 
 // RemoteAuditObserver sends audit events to a remote HTTP endpoint.
+// generate:reset
 type RemoteAuditObserver struct {
 	client *resty.Client
 	url    string

@@ -9,6 +9,7 @@ import (
 )
 
 // FileAuditObserver writes audit events to a file.
+// generate:reset
 type FileAuditObserver struct {
 	filePath string
 }

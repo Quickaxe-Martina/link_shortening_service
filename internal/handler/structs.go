@@ -10,6 +10,7 @@ import (
 )
 
 // Handler data
+// generate:reset
 type Handler struct {
 	cfg          *config.Config
 	store        storage.Storage

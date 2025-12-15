@@ -15,6 +15,7 @@ import (
 
 // Claims — структура утверждений, которая включает стандартные утверждения и
 // одно пользовательское UserID
+// generate:reset
 type Claims struct {
 	jwt.RegisteredClaims
 	UserID int

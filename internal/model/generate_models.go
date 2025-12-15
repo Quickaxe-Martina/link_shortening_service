@@ -9,6 +9,7 @@ import (
 )
 
 // JSONGenerateURLRequest model for request
+// generate:reset
 type JSONGenerateURLRequest struct {
 	URL string `json:"url"`
 }
@@ -32,11 +33,13 @@ func (r *JSONGenerateURLRequest) Validate() error {
 }
 
 // JSONGenerateURLResponse model for response
+// generate:reset
 type JSONGenerateURLResponse struct {
 	Result string `json:"result"`
 }
 
 // BatchGenerateURLRequest model for request
+// generate:reset
 type BatchGenerateURLRequest struct {
 	CorrelationID string `json:"correlation_id"`
 	URL           string `json:"original_url"`
@@ -61,12 +64,14 @@ func (r *BatchGenerateURLRequest) Validate() error {
 }
 
 // BatchGenerateURLResponse model for response
+// generate:reset
 type BatchGenerateURLResponse struct {
 	CorrelationID string `json:"correlation_id"`
 	ShortURL      string `json:"short_url"`
 }
 
 // UserURLsResponse model for response
+// generate:reset
 type UserURLsResponse struct {
 	ShortURL    string `json:"short_url"`
 	OriginalURL string `json:"original_url"`

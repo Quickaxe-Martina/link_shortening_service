@@ -16,6 +16,7 @@ import (
 )
 
 // PostgresStorage is DB implementation of the Storage interface
+// generate:reset
 type PostgresStorage struct {
 	DB *sql.DB
 }

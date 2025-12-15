@@ -11,11 +11,13 @@ import (
 )
 
 // JSONGenerateURLRequest model
+// generate:reset
 type JSONGenerateURLRequest struct {
 	URL string `json:"url"`
 }
 
 // JSONGenerateURLResponse model
+// generate:reset
 type JSONGenerateURLResponse struct {
 	Result string `json:"result"`
 }

@@ -9,6 +9,7 @@ import (
 )
 
 // AuditEvent represents a user action event for auditing purposes.
+// generate:reset
 type AuditEvent struct {
 	TS     int64  `json:"ts"`
 	Action string `json:"action"`
@@ -34,6 +35,7 @@ type AuditObserver interface {
 }
 
 // AuditPublisher publishes audit events to registered observers.
+// generate:reset
 type AuditPublisher struct {
 	observers []AuditObserver
 	ch        chan AuditEvent
