@@ -20,6 +20,7 @@ import (
 	"github.com/Quickaxe-Martina/link_shortening_service/internal/storage"
 	"github.com/go-chi/chi/v5"
 	"go.uber.org/zap"
+	"golang.org/x/crypto/acme/autocert"
 	"golang.org/x/sync/errgroup"
 )
 
@@ -80,6 +81,8 @@ func main() {
 		context.Background(),
 		os.Interrupt,
 		syscall.SIGTERM,
+		syscall.SIGQUIT,
+		syscall.SIGINT,
 	)
 	defer stop()
 
@@ -111,13 +114,36 @@ func main() {
 	}
 
 	r := setupRouter(cfg, store, deleteWorker, audit)
+	var httpServer *http.Server
 
-	httpServer := &http.Server{
-		Addr:    cfg.RunAddr,
-		Handler: r,
-		BaseContext: func(_ net.Listener) context.Context {
-			return mainCtx
-		},
+	if cfg.UseTLS {
+		// конструируем менеджер TLS-сертификатов
+		manager := &autocert.Manager{
+			// директория для хранения сертификатов
+			Cache: autocert.DirCache("cache-dir"),
+			// функция, принимающая Terms of Service издателя сертификатов
+			Prompt: autocert.AcceptTOS,
+			// перечень доменов, для которых будут поддерживаться сертификаты
+			HostPolicy: autocert.HostWhitelist("mysite.ru", "www.mysite.ru"),
+		}
+		// конструируем сервер с поддержкой TLS
+		httpServer = &http.Server{
+			Addr:    cfg.RunAddr,
+			Handler: r,
+			// для TLS-конфигурации используем менеджер сертификатов
+			TLSConfig: manager.TLSConfig(),
+			BaseContext: func(_ net.Listener) context.Context {
+				return mainCtx
+			},
+		}
+	} else {
+		httpServer = &http.Server{
+			Addr:    cfg.RunAddr,
+			Handler: r,
+			BaseContext: func(_ net.Listener) context.Context {
+				return mainCtx
+			},
+		}
 	}
 
 	pprofServer := &http.Server{
@@ -132,9 +158,16 @@ func main() {
 	// HTTP server
 	g.Go(func() error {
 		logger.Log.Info("HTTP server started", zap.String("addr", cfg.RunAddr))
-		if err := httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			return err
+		if cfg.UseTLS {
+			if err := httpServer.ListenAndServeTLS("", ""); err != nil && err != http.ErrServerClosed {
+				return err
+			}
+		} else {
+			if err := httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+				return err
+			}
 		}
+
 		return nil
 	})
 

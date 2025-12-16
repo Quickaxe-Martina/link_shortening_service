@@ -6,17 +6,13 @@ import (
 )
 
 // ParseFlags parses command-line flags to configure the server's runtime parameters.
-func ParseFlags(cfg *Config, onlyEmpty bool) {
-	var runAddr string
+func ParseFlags(cfg *Config) {
 	var serverAddr = "http://localhost:8080/"
-	var dataFilePath string
-	var databaseDsn string
-	var auditFile string
-	var auditURL string
 
-	flag.StringVar(&runAddr, "a", ":8080", "address and port to run server")
-	flag.StringVar(&dataFilePath, "f", "", "saved urls path")
-	flag.StringVar(&databaseDsn, "d", "", "database")
+	flag.StringVar(&cfg.RunAddr, "a", ":8080", "address and port to run server")
+	flag.StringVar(&cfg.DataFilePath, "f", "", "saved urls path")
+	flag.StringVar(&cfg.DatabaseDsn, "d", "", "database")
+	useTLS := flag.Bool("s", false, "")
 	flag.Func("b", "server address before short URL", func(s string) error {
 		if len(s) == 0 {
 			return nil
@@ -27,25 +23,9 @@ func ParseFlags(cfg *Config, onlyEmpty bool) {
 		serverAddr = s
 		return nil
 	})
-	flag.StringVar(&auditFile, "audit-file", "", "path to audit file")
-	flag.StringVar(&auditURL, "audit-url", "", "remote audit receiver URL")
+	flag.StringVar(&cfg.AuditFile, "audit-file", "", "path to audit file")
+	flag.StringVar(&cfg.AuditURL, "audit-url", "", "remote audit receiver URL")
 	flag.Parse()
-	if onlyEmpty && cfg.RunAddr == "" {
-		cfg.RunAddr = runAddr
-	}
-	if onlyEmpty && cfg.ServerAddr == "" {
-		cfg.ServerAddr = serverAddr
-	}
-	if onlyEmpty && cfg.DataFilePath == "" {
-		cfg.DataFilePath = dataFilePath
-	}
-	if onlyEmpty && cfg.DatabaseDsn == "" {
-		cfg.DatabaseDsn = databaseDsn
-	}
-	if onlyEmpty && cfg.AuditFile == "" {
-		cfg.AuditFile = auditFile
-	}
-	if onlyEmpty && cfg.AuditURL == "" {
-		cfg.AuditURL = auditURL
-	}
+	cfg.ServerAddr = serverAddr
+	cfg.UseTLS = *useTLS
 }
