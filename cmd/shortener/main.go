@@ -83,11 +83,6 @@ func main() {
 	)
 	defer stop()
 
-	// pprof
-	go func() {
-		log.Println(http.ListenAndServe("localhost:6060", nil))
-	}()
-
 	cfg := config.NewConfig()
 
 	if err := logger.Initialize("info"); err != nil {
@@ -125,12 +120,28 @@ func main() {
 		},
 	}
 
+	pprofServer := &http.Server{
+		Addr: "localhost:6060",
+		BaseContext: func(_ net.Listener) context.Context {
+			return mainCtx
+		},
+	}
+
 	g, gCtx := errgroup.WithContext(mainCtx)
 
 	// HTTP server
 	g.Go(func() error {
 		logger.Log.Info("HTTP server started", zap.String("addr", cfg.RunAddr))
 		if err := httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			return err
+		}
+		return nil
+	})
+
+	// pprof server
+	g.Go(func() error {
+		logger.Log.Info("pprof server started", zap.String("addr", "localhost:6060"))
+		if err := pprofServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			return err
 		}
 		return nil
@@ -147,6 +158,10 @@ func main() {
 
 		if err := httpServer.Shutdown(shutdownCtx); err != nil {
 			logger.Log.Error("http shutdown error", zap.Error(err))
+		}
+
+		if err := pprofServer.Shutdown(shutdownCtx); err != nil {
+			logger.Log.Error("pprof shutdown error", zap.Error(err))
 		}
 
 		deleteWorker.Stop()
