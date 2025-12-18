@@ -9,6 +9,7 @@ import (
 )
 
 // FileAuditObserver writes audit events to a file.
+// generate:reset
 type FileAuditObserver struct {
 	filePath string
 }
@@ -27,6 +28,9 @@ func (a *FileAuditObserver) Notify(event AuditEvent) {
 	}
 	defer file.Close()
 
-	b, _ := json.Marshal(event)
+	b, err := json.Marshal(event)
+	if err != nil {
+		return
+	}
 	file.Write(append(b, '\n'))
 }

@@ -10,6 +10,7 @@ import (
 )
 
 // MemoryStorage is an in-memory implementation of the Storage interface
+// generate:reset
 type MemoryStorage struct {
 	Urls         map[string]URL
 	Users        map[int]User

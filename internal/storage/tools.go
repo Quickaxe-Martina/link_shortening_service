@@ -10,6 +10,7 @@ import (
 	"go.uber.org/zap"
 )
 
+// generate:reset
 type savedURLItem struct {
 	UUID        string `json:"uuid"`
 	ShortURL    string `json:"short_url"`
@@ -17,6 +18,7 @@ type savedURLItem struct {
 	UserID      int    `json:"user_id"`
 }
 
+// generate:reset
 type savedUserItem struct {
 	UUID string `json:"uuid"`
 	ID   int    `json:"id"`

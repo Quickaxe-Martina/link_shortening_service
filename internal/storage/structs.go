@@ -1,3 +1,6 @@
+/*
+Package storage for storages
+*/
 package storage
 
 import (
@@ -18,6 +21,7 @@ var ErrURLDeleted = errors.New("url has deleted")
 var ErrNotImplemented = errors.New("not implemented")
 
 // URL code and original value
+// generate:reset
 type URL struct {
 	Code      string
 	URL       string
@@ -26,6 +30,7 @@ type URL struct {
 }
 
 // User model
+// generate:reset
 type User struct {
 	ID int
 }

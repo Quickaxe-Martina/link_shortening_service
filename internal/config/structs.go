@@ -1,6 +1,10 @@
+/*
+Package config for config
+*/
 package config
 
 // Config variables
+// generate:reset
 type Config struct {
 	RunAddr            string `env:"SERVER_ADDRESS"`
 	ServerAddr         string `env:"BASE_URL"`
@@ -14,6 +18,7 @@ type Config struct {
 	DeleteTimeDuration int    `env:"DELETE_TIME_DURATION"`
 	AuditFile          string `env:"AUDIT_FILE"`
 	AuditURL           string `env:"AUDIT_URL"`
+	ShutdownTimeout    int    `env:"SHUTDOWN_TIMEOUT"`
 }
 
 // NewConfig create Config

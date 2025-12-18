@@ -1,3 +1,6 @@
+/*
+Package handler for handlers
+*/
 package handler
 
 import (
@@ -7,6 +10,7 @@ import (
 )
 
 // Handler data
+// generate:reset
 type Handler struct {
 	cfg          *config.Config
 	store        storage.Storage

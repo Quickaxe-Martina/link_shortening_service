@@ -36,3 +36,4 @@ cmd/wipedb/wipedb
 audit_data.json
 hey_linux_amd64
 cmd/loadtest/loadtest
+staticlint
