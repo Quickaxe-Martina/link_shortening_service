@@ -15,13 +15,6 @@ import (
 	"golang.org/x/sync/errgroup"
 )
 
-func serve(srv *http.Server) error {
-	if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-		return err
-	}
-	return nil
-}
-
 func shutdown(
 	cfg *config.Config,
 	httpServer *http.Server,
@@ -60,13 +53,19 @@ func runServers(
 
 	g.Go(func() error {
 		logger.Log.Info("HTTP server started", zap.String("addr", httpServer.Addr))
-		return serve(httpServer)
+		if err := httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			return err
+		}
+		return nil
 	})
 
-	g.Go(func() error {
+	go func() error {
 		logger.Log.Info("pprof server started", zap.String("addr", pprofServer.Addr))
-		return serve(pprofServer)
-	})
+		if err := pprofServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+			return err
+		}
+		return nil
+	}()
 
 	g.Go(func() error {
 		<-gCtx.Done()

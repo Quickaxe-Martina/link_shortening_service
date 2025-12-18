@@ -18,6 +18,7 @@ type Config struct {
 	DeleteTimeDuration int    `env:"DELETE_TIME_DURATION"`
 	AuditFile          string `env:"AUDIT_FILE"`
 	AuditURL           string `env:"AUDIT_URL"`
+	ShutdownTimeout	int `env:"SHUTDOWN_TIMEOUT"`
 }
 
 // NewConfig create Config

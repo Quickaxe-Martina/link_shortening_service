@@ -20,7 +20,6 @@ import (
 	"github.com/Quickaxe-Martina/link_shortening_service/internal/storage"
 	"github.com/go-chi/chi/v5"
 	"go.uber.org/zap"
-	"golang.org/x/sync/errgroup"
 )
 
 var (
@@ -74,13 +73,32 @@ func printBuildInfo() {
 	fmt.Printf("Build commit: %s\n", commit)
 }
 
-func main() {
-	printBuildInfo()
-	mainCtx, stop := signal.NotifyContext(
+func setupSignalContext() (context.Context, context.CancelFunc) {
+	return signal.NotifyContext(
 		context.Background(),
 		os.Interrupt,
 		syscall.SIGTERM,
+		syscall.SIGQUIT,
 	)
+}
+
+func setupAudit(cfg *config.Config) *repository.AuditPublisher {
+	audit := repository.NewAuditPublisher(100)
+
+	if cfg.AuditFile != "" {
+		audit.Register(repository.NewFileAuditObserver(cfg.AuditFile))
+	}
+	if cfg.AuditURL != "" {
+		audit.Register(repository.NewRemoteAuditObserver(cfg.AuditURL))
+	}
+
+	return audit
+}
+
+
+func main() {
+	printBuildInfo()
+	mainCtx, stop := setupSignalContext()
 	defer stop()
 
 	cfg := config.NewConfig()
@@ -101,14 +119,7 @@ func main() {
 		cfg.DeleteBachSize,
 	)
 
-	audit := repository.NewAuditPublisher(100)
-
-	if cfg.AuditFile != "" {
-		audit.Register(repository.NewFileAuditObserver(cfg.AuditFile))
-	}
-	if cfg.AuditURL != "" {
-		audit.Register(repository.NewRemoteAuditObserver(cfg.AuditURL))
-	}
+	audit := setupAudit(cfg)
 
 	r := setupRouter(cfg, store, deleteWorker, audit)
 
@@ -127,52 +138,5 @@ func main() {
 		},
 	}
 
-	g, gCtx := errgroup.WithContext(mainCtx)
-
-	// HTTP server
-	g.Go(func() error {
-		logger.Log.Info("HTTP server started", zap.String("addr", cfg.RunAddr))
-		if err := httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			return err
-		}
-		return nil
-	})
-
-	// pprof server
-	g.Go(func() error {
-		logger.Log.Info("pprof server started", zap.String("addr", "localhost:6060"))
-		if err := pprofServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			return err
-		}
-		return nil
-	})
-
-	// Graceful shutdown
-	g.Go(func() error {
-		<-gCtx.Done()
-
-		logger.Log.Info("shutdown signal received")
-
-		shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-		defer cancel()
-
-		if err := httpServer.Shutdown(shutdownCtx); err != nil {
-			logger.Log.Error("http shutdown error", zap.Error(err))
-		}
-
-		if err := pprofServer.Shutdown(shutdownCtx); err != nil {
-			logger.Log.Error("pprof shutdown error", zap.Error(err))
-		}
-
-		deleteWorker.Stop()
-		audit.Stop()
-		store.Close()
-
-		logger.Log.Info("graceful shutdown completed")
-		return nil
-	})
-
-	if err := g.Wait(); err != nil {
-		logger.Log.Error("server exited with error", zap.Error(err))
-	}
+	runServers(mainCtx, cfg, httpServer, pprofServer, store, deleteWorker, audit)
 }
