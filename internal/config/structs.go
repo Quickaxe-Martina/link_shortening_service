@@ -19,6 +19,7 @@ type Config struct {
 	AuditFile          string `env:"AUDIT_FILE" json:"audit_file"`
 	AuditURL           string `env:"AUDIT_URL" json:"audit_url"`
 	UseTLS             bool   `env:"ENABLE_HTTPS" json:"enable_https"`
+	ShutdownTimeout    int    `env:"SHUTDOWN_TIMEOUT" json:"shutdown_timeout"`
 }
 
 // NewConfig create Config
@@ -37,6 +38,7 @@ func NewConfig() *Config {
 		AuditFile:          "./audit_data.json",
 		AuditURL:           "",
 		UseTLS:             false,
+		ShutdownTimeout:    10,
 	}
 	LoadConfigFile(&cfg)
 	ParseFlags(&cfg)

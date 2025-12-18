@@ -79,7 +79,14 @@ func (p *AuditPublisher) Register(obs AuditObserver) {
 
 // Publish sends an audit event to all registered observers asynchronously.
 func (p *AuditPublisher) Publish(event AuditEvent) {
-	p.ch <- event
+	select {
+	case p.ch <- event:
+		logger.Log.Info("event pushed to channel")
+	default:
+		// TODO: тут можно хранилище какое-нибудь подключить куда можно складывать
+		logger.Log.Warn("audit channel is full")
+	}
+
 }
 
 // Stop signals the worker to stop and waits for all events to be processed.

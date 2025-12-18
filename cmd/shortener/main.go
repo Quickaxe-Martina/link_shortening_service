@@ -4,8 +4,6 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"net"
-	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
@@ -18,10 +16,9 @@ import (
 	"github.com/Quickaxe-Martina/link_shortening_service/internal/logger"
 	"github.com/Quickaxe-Martina/link_shortening_service/internal/repository"
 	"github.com/Quickaxe-Martina/link_shortening_service/internal/storage"
+	"github.com/Quickaxe-Martina/link_shortening_service/internal/tools"
 	"github.com/go-chi/chi/v5"
 	"go.uber.org/zap"
-	"golang.org/x/crypto/acme/autocert"
-	"golang.org/x/sync/errgroup"
 )
 
 var (
@@ -75,15 +72,32 @@ func printBuildInfo() {
 	fmt.Printf("Build commit: %s\n", commit)
 }
 
-func main() {
-	printBuildInfo()
-	mainCtx, stop := signal.NotifyContext(
+func setupSignalContext() (context.Context, context.CancelFunc) {
+	return signal.NotifyContext(
 		context.Background(),
 		os.Interrupt,
 		syscall.SIGTERM,
 		syscall.SIGQUIT,
 		syscall.SIGINT,
 	)
+}
+
+func setupAudit(cfg *config.Config) *repository.AuditPublisher {
+	audit := repository.NewAuditPublisher(100)
+
+	if cfg.AuditFile != "" {
+		audit.Register(repository.NewFileAuditObserver(cfg.AuditFile))
+	}
+	if cfg.AuditURL != "" {
+		audit.Register(repository.NewRemoteAuditObserver(cfg.AuditURL))
+	}
+
+	return audit
+}
+
+func main() {
+	printBuildInfo()
+	mainCtx, stop := setupSignalContext()
 	defer stop()
 
 	cfg := config.NewConfig()
@@ -104,108 +118,11 @@ func main() {
 		cfg.DeleteBachSize,
 	)
 
-	audit := repository.NewAuditPublisher(100)
-
-	if cfg.AuditFile != "" {
-		audit.Register(repository.NewFileAuditObserver(cfg.AuditFile))
-	}
-	if cfg.AuditURL != "" {
-		audit.Register(repository.NewRemoteAuditObserver(cfg.AuditURL))
-	}
+	audit := setupAudit(cfg)
 
 	r := setupRouter(cfg, store, deleteWorker, audit)
-	var httpServer *http.Server
 
-	if cfg.UseTLS {
-		// конструируем менеджер TLS-сертификатов
-		manager := &autocert.Manager{
-			// директория для хранения сертификатов
-			Cache: autocert.DirCache("cache-dir"),
-			// функция, принимающая Terms of Service издателя сертификатов
-			Prompt: autocert.AcceptTOS,
-			// перечень доменов, для которых будут поддерживаться сертификаты
-			HostPolicy: autocert.HostWhitelist("mysite.ru", "www.mysite.ru"),
-		}
-		// конструируем сервер с поддержкой TLS
-		httpServer = &http.Server{
-			Addr:    cfg.RunAddr,
-			Handler: r,
-			// для TLS-конфигурации используем менеджер сертификатов
-			TLSConfig: manager.TLSConfig(),
-			BaseContext: func(_ net.Listener) context.Context {
-				return mainCtx
-			},
-		}
-	} else {
-		httpServer = &http.Server{
-			Addr:    cfg.RunAddr,
-			Handler: r,
-			BaseContext: func(_ net.Listener) context.Context {
-				return mainCtx
-			},
-		}
-	}
+	httpServer, pprofServer := tools.SetupServers(mainCtx, cfg, r)
 
-	pprofServer := &http.Server{
-		Addr: "localhost:6060",
-		BaseContext: func(_ net.Listener) context.Context {
-			return mainCtx
-		},
-	}
-
-	g, gCtx := errgroup.WithContext(mainCtx)
-
-	// HTTP server
-	g.Go(func() error {
-		logger.Log.Info("HTTP server started", zap.String("addr", cfg.RunAddr))
-		if cfg.UseTLS {
-			if err := httpServer.ListenAndServeTLS("", ""); err != nil && err != http.ErrServerClosed {
-				return err
-			}
-		} else {
-			if err := httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-				return err
-			}
-		}
-
-		return nil
-	})
-
-	// pprof server
-	g.Go(func() error {
-		logger.Log.Info("pprof server started", zap.String("addr", "localhost:6060"))
-		if err := pprofServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			return err
-		}
-		return nil
-	})
-
-	// Graceful shutdown
-	g.Go(func() error {
-		<-gCtx.Done()
-
-		logger.Log.Info("shutdown signal received")
-
-		shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-		defer cancel()
-
-		if err := httpServer.Shutdown(shutdownCtx); err != nil {
-			logger.Log.Error("http shutdown error", zap.Error(err))
-		}
-
-		if err := pprofServer.Shutdown(shutdownCtx); err != nil {
-			logger.Log.Error("pprof shutdown error", zap.Error(err))
-		}
-
-		deleteWorker.Stop()
-		audit.Stop()
-		store.Close()
-
-		logger.Log.Info("graceful shutdown completed")
-		return nil
-	})
-
-	if err := g.Wait(); err != nil {
-		logger.Log.Error("server exited with error", zap.Error(err))
-	}
+	tools.RunServers(mainCtx, cfg, httpServer, pprofServer, store, deleteWorker, audit)
 }
