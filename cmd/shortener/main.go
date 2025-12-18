@@ -18,6 +18,7 @@ import (
 	"github.com/Quickaxe-Martina/link_shortening_service/internal/logger"
 	"github.com/Quickaxe-Martina/link_shortening_service/internal/repository"
 	"github.com/Quickaxe-Martina/link_shortening_service/internal/storage"
+	"github.com/Quickaxe-Martina/link_shortening_service/internal/tools"
 	"github.com/go-chi/chi/v5"
 	"go.uber.org/zap"
 )
@@ -95,7 +96,6 @@ func setupAudit(cfg *config.Config) *repository.AuditPublisher {
 	return audit
 }
 
-
 func main() {
 	printBuildInfo()
 	mainCtx, stop := setupSignalContext()
@@ -138,5 +138,5 @@ func main() {
 		},
 	}
 
-	runServers(mainCtx, cfg, httpServer, pprofServer, store, deleteWorker, audit)
+	tools.RunServers(mainCtx, cfg, httpServer, pprofServer, store, deleteWorker, audit)
 }

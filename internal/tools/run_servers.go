@@ -1,11 +1,9 @@
-package main
+package tools
 
 import (
 	"context"
 	"net/http"
 	"time"
-
-	_ "net/http/pprof"
 
 	"github.com/Quickaxe-Martina/link_shortening_service/internal/config"
 	"github.com/Quickaxe-Martina/link_shortening_service/internal/logger"
@@ -40,7 +38,7 @@ func shutdown(
 	return nil
 }
 
-func runServers(
+func RunServers(
 	ctx context.Context,
 	cfg *config.Config,
 	httpServer *http.Server,
