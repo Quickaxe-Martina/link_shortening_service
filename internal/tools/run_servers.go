@@ -38,7 +38,6 @@ func shutdown(
 	return nil
 }
 
-
 // RunServers function for run servers
 func RunServers(
 	ctx context.Context,
