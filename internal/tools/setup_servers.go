@@ -5,8 +5,6 @@ import (
 	"net"
 	"net/http"
 
-	_ "net/http/pprof"
-
 	"github.com/Quickaxe-Martina/link_shortening_service/internal/config"
 	"github.com/go-chi/chi/v5"
 	"golang.org/x/crypto/acme/autocert"
