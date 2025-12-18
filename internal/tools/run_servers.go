@@ -51,9 +51,15 @@ func RunServers(
 	g, gCtx := errgroup.WithContext(ctx)
 
 	g.Go(func() error {
-		logger.Log.Info("HTTP server started", zap.String("addr", httpServer.Addr))
-		if err := httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			return err
+		logger.Log.Info("HTTP server started", zap.String("addr", cfg.RunAddr))
+		if cfg.UseTLS {
+			if err := httpServer.ListenAndServeTLS("", ""); err != nil && err != http.ErrServerClosed {
+				return err
+			}
+		} else {
+			if err := httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+				return err
+			}
 		}
 		return nil
 	})

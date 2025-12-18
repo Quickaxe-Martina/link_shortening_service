@@ -4,8 +4,6 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"net"
-	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
@@ -80,6 +78,7 @@ func setupSignalContext() (context.Context, context.CancelFunc) {
 		os.Interrupt,
 		syscall.SIGTERM,
 		syscall.SIGQUIT,
+		syscall.SIGINT,
 	)
 }
 
@@ -123,20 +122,7 @@ func main() {
 
 	r := setupRouter(cfg, store, deleteWorker, audit)
 
-	httpServer := &http.Server{
-		Addr:    cfg.RunAddr,
-		Handler: r,
-		BaseContext: func(_ net.Listener) context.Context {
-			return mainCtx
-		},
-	}
-
-	pprofServer := &http.Server{
-		Addr: "localhost:6060",
-		BaseContext: func(_ net.Listener) context.Context {
-			return mainCtx
-		},
-	}
+	httpServer, pprofServer := tools.SetupServers(mainCtx, cfg, r)
 
 	tools.RunServers(mainCtx, cfg, httpServer, pprofServer, store, deleteWorker, audit)
 }
