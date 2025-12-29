@@ -48,6 +48,10 @@ func setupRouter(cfg *config.Config, store storage.Storage, deleteWorker *reposi
 	r.Route("/ping", func(r chi.Router) {
 		r.Get("/", h.Ping)
 	})
+	r.Route("/api/internal", func(r chi.Router) {
+		r.Use(h.TrustedSubnetOnly)
+		r.Get("/stats", h.InternalStats)
+	})
 	return r
 }
 
@@ -115,7 +119,7 @@ func main() {
 		store,
 		3,
 		time.Duration(cfg.DeleteTimeDuration),
-		cfg.DeleteBachSize,
+		cfg.DeleteBatchSize,
 	)
 
 	audit := setupAudit(cfg)

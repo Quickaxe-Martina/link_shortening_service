@@ -111,3 +111,14 @@ func (m *MemoryStorage) GetAllUsers(ctx context.Context) ([]User, error) {
 func (m *MemoryStorage) DeleteUserURLs(ctx context.Context, userID int, codes []string) error {
 	return ErrNotImplemented
 }
+
+
+// GetURLsCount returns URLs count
+func (m *MemoryStorage) GetURLsCount(ctx context.Context) (int, error) {
+	return len(m.Urls), nil
+}
+
+// GetUsersCount returns users count
+func (m *MemoryStorage) GetUsersCount(ctx context.Context) (int, error) {
+	return len(m.Users), nil
+}

@@ -25,6 +25,7 @@ func ParseFlags(cfg *Config) {
 	})
 	flag.StringVar(&cfg.AuditFile, "audit-file", "", "path to audit file")
 	flag.StringVar(&cfg.AuditURL, "audit-url", "", "remote audit receiver URL")
+	flag.StringVar(&cfg.TrustedSubnet, "t", cfg.TrustedSubnet, "trusted subnet in CIDR")
 	flag.Parse()
 	cfg.ServerAddr = serverAddr
 	cfg.UseTLS = *useTLS

@@ -21,7 +21,7 @@ func SetupServers(ctx context.Context, cfg *config.Config, r *chi.Mux) (*http.Se
 			// функция, принимающая Terms of Service издателя сертификатов
 			Prompt: autocert.AcceptTOS,
 			// перечень доменов, для которых будут поддерживаться сертификаты
-			HostPolicy: autocert.HostWhitelist("mysite.ru", "www.mysite.ru"),
+			HostPolicy: autocert.HostWhitelist(cfg.HostWhitelist...),
 		}
 		// конструируем сервер с поддержкой TLS
 		httpServer = &http.Server{

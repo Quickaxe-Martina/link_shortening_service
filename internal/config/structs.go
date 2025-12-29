@@ -14,12 +14,14 @@ type Config struct {
 	DevMode            bool   `env:"DEV_MODE" json:"dev_mode"`
 	SecretKey          string `env:"SECRET_KEY" json:"secret_key"`
 	TokenExp           int    `env:"TOKEN_EXP" json:"token_exp"`
-	DeleteBachSize     int    `env:"DELETE_BACH_SIZE" json:"delete_bach_size"`
+	DeleteBatchSize     int    `env:"DELETE_BACH_SIZE" json:"delete_bach_size"`
 	DeleteTimeDuration int    `env:"DELETE_TIME_DURATION" json:"delete_time_duration"`
 	AuditFile          string `env:"AUDIT_FILE" json:"audit_file"`
 	AuditURL           string `env:"AUDIT_URL" json:"audit_url"`
 	UseTLS             bool   `env:"ENABLE_HTTPS" json:"enable_https"`
 	ShutdownTimeout    int    `env:"SHUTDOWN_TIMEOUT" json:"shutdown_timeout"`
+	HostWhitelist []string `env:"HOST_WHITELIST" envSeparator:"," json:"host_whitelist"`
+	TrustedSubnet      string   `env:"TRUSTED_SUBNET" json:"trusted_subnet"`
 }
 
 // NewConfig create Config
@@ -34,11 +36,13 @@ func NewConfig() *Config {
 		SecretKey:          "my_secret_key",
 		TokenExp:           3,
 		DeleteTimeDuration: 5,
-		DeleteBachSize:     50,
+		DeleteBatchSize:     50,
 		AuditFile:          "./audit_data.json",
 		AuditURL:           "",
 		UseTLS:             false,
 		ShutdownTimeout:    10,
+		HostWhitelist: nil,
+		TrustedSubnet:      "",
 	}
 	LoadConfigFile(&cfg)
 	ParseFlags(&cfg)
