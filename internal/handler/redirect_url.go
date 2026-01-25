@@ -6,8 +6,6 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/Quickaxe-Martina/link_shortening_service/internal/logger"
-	"github.com/Quickaxe-Martina/link_shortening_service/internal/repository"
 	"github.com/Quickaxe-Martina/link_shortening_service/internal/storage"
 
 	"github.com/go-chi/chi/v5"
@@ -15,14 +13,16 @@ import (
 
 // RedirectURL redirect by URLCode
 func (h *Handler) RedirectURL(w http.ResponseWriter, r *http.Request) {
-	URLCode := chi.URLParam(r, "URLCode")
-	if len(URLCode) == 0 {
-		logger.Log.Info("URLCode is empty")
+	code := chi.URLParam(r, "URLCode")
+	if code == "" {
 		http.Error(w, "URLCode is empty", http.StatusBadRequest)
+		return
 	}
+
 	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 	defer cancel()
-	url, err := h.store.GetURL(ctx, URLCode)
+
+	url, err := h.shortener.RedirectURL(ctx, code)
 	if err != nil {
 		if errors.Is(err, storage.ErrURLDeleted) {
 			http.Error(w, "Status Gone", http.StatusGone)
@@ -31,12 +31,6 @@ func (h *Handler) RedirectURL(w http.ResponseWriter, r *http.Request) {
 		}
 		return
 	}
-	h.audit.Publish(repository.AuditEvent{
-		TS:     time.Now().Unix(),
-		Action: "follow",
-		UserID: 0,
-		URL:    url.URL,
-	})
-	w.Header().Set("Location", url.URL)
-	w.WriteHeader(http.StatusTemporaryRedirect)
+
+	http.Redirect(w, r, url, http.StatusTemporaryRedirect)
 }

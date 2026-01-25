@@ -66,3 +66,32 @@ func (s *ShortenerService) Shorten(
 
 	return s.cfg.ServerAddr + code, nil
 }
+
+func (s *ShortenerService) GetUserURLs(ctx context.Context, userID int) ([]storage.URL, error) {
+	urls, err := s.store.GetURLsByUserID(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	return urls, nil
+}
+
+func (s *ShortenerService) RedirectURL(ctx context.Context, code string) (string, error) {
+	if code == "" {
+		return "", errors.New("empty URL code")
+	}
+
+	url, err := s.store.GetURL(ctx, code)
+	if err != nil {
+		return "", err
+	}
+
+	// Публикация события аудита
+	s.audit.Publish(repository.AuditEvent{
+		TS:     time.Now().Unix(),
+		Action: "follow",
+		UserID: 0,
+		URL:    url.URL,
+	})
+
+	return url.URL, nil
+}
