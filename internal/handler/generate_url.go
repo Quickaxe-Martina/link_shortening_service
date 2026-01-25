@@ -10,7 +10,6 @@ import (
 
 	"github.com/Quickaxe-Martina/link_shortening_service/internal/logger"
 	"github.com/Quickaxe-Martina/link_shortening_service/internal/model"
-	"github.com/Quickaxe-Martina/link_shortening_service/internal/repository"
 	"github.com/Quickaxe-Martina/link_shortening_service/internal/service"
 	"github.com/Quickaxe-Martina/link_shortening_service/internal/storage"
 	"go.uber.org/zap"
@@ -26,43 +25,23 @@ func (h *Handler) GenerateURL(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	h.audit.Publish(repository.AuditEvent{
-		TS:     time.Now().Unix(),
-		Action: "shorten",
-		UserID: user.ID,
-		URL:    string(body),
-	})
+	ctx, cancel := context.WithTimeout(r.Context(), 1*time.Second)
+	defer cancel()
 
-	URLCode, err := service.GenerateRandomString(6)
-	if err != nil {
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+	shortURL, err := h.shortener.Shorten(ctx, user.ID, string(body))
+	if errors.Is(err, storage.ErrURLAlreadyExists) {
+		w.WriteHeader(http.StatusConflict)
+		w.Write([]byte(shortURL))
 		return
 	}
-
-	logger.Log.Info("URL code", zap.String("URLCode", URLCode))
-	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
-	defer cancel()
-	if err := h.store.SaveURL(ctx, storage.URL{Code: URLCode, URL: string(body), UserID: user.ID}); err != nil {
-		if errors.Is(err, storage.ErrURLAlreadyExists) {
-			var url storage.URL
-			url, err = h.store.GetByURL(ctx, string(body))
-			if err != nil {
-				logger.Log.Error("error get by url", zap.Error(err))
-				http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-				return
-			}
-
-			w.WriteHeader(http.StatusConflict)
-			w.Write([]byte(h.cfg.ServerAddr + url.Code))
-			return
-		}
-		logger.Log.Error("", zap.Error(err))
+	if err != nil {
+		logger.Log.Error("error shortening URL", zap.Error(err))
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
 
 	w.WriteHeader(http.StatusCreated)
-	w.Write([]byte(h.cfg.ServerAddr + URLCode))
+	w.Write([]byte(shortURL))
 }
 
 // JSONGenerateURL handles HTTP JSON requests to create a shortened URL.
@@ -70,77 +49,41 @@ func (h *Handler) JSONGenerateURL(w http.ResponseWriter, r *http.Request) {
 	user := GetUser(r.Context())
 
 	var req model.JSONGenerateURLRequest
-	dec := json.NewDecoder(r.Body)
-	if err := dec.Decode(&req); err != nil {
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		logger.Log.Debug("cannot decode request JSON body", zap.Error(err))
-		w.WriteHeader(http.StatusInternalServerError)
+		http.Error(w, "Bad Request", http.StatusBadRequest)
 		return
 	}
 
-	err := req.Validate()
-	if err != nil {
+	if err := req.Validate(); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	h.audit.Publish(repository.AuditEvent{
-		TS:     time.Now().Unix(),
-		Action: "shorten",
-		UserID: user.ID,
-		URL:    req.URL,
-	})
-
-	URLCode, err := service.GenerateRandomString(6)
-	if err != nil {
-		logger.Log.Error("", zap.Error(err))
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-		return
-	}
-	logger.Log.Info("URL code", zap.String("URLCode", URLCode))
-
-	ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
+	ctx, cancel := context.WithTimeout(r.Context(), 1*time.Second)
 	defer cancel()
-	if err := h.store.SaveURL(ctx, storage.URL{Code: URLCode, URL: req.URL, UserID: user.ID}); err != nil {
-		if errors.Is(err, storage.ErrURLAlreadyExists) {
-			logger.Log.Info("ErrURLAlreadyExists")
-			var url storage.URL
-			url, err = h.store.GetByURL(ctx, req.URL)
-			if err != nil {
-				logger.Log.Error("error get by url", zap.Error(err))
-				http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-				return
-			}
 
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusConflict)
-
-			resp := model.JSONGenerateURLResponse{
-				Result: h.cfg.ServerAddr + url.Code,
-			}
-			enc := json.NewEncoder(w)
-			if err = enc.Encode(resp); err != nil {
-				logger.Log.Error("error encoding response", zap.Error(err))
-				http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-				return
-			}
-			return
+	shortURL, err := h.shortener.Shorten(ctx, user.ID, req.URL)
+	if errors.Is(err, storage.ErrURLAlreadyExists) {
+		resp := model.JSONGenerateURLResponse{Result: shortURL}
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusConflict)
+		if err := json.NewEncoder(w).Encode(resp); err != nil {
+			logger.Log.Error("error encoding response", zap.Error(err))
 		}
-		logger.Log.Error("", zap.Error(err))
+		return
+	}
+	if err != nil {
+		logger.Log.Error("error shortening URL", zap.Error(err))
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 		return
 	}
 
+	resp := model.JSONGenerateURLResponse{Result: shortURL}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusCreated)
-
-	resp := model.JSONGenerateURLResponse{
-		Result: h.cfg.ServerAddr + URLCode,
-	}
-
-	enc := json.NewEncoder(w)
-	if err := enc.Encode(resp); err != nil {
+	if err := json.NewEncoder(w).Encode(resp); err != nil {
 		logger.Log.Error("error encoding response", zap.Error(err))
-		return
 	}
 }
 
