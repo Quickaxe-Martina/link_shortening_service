@@ -5,7 +5,6 @@ import (
 	"net/http"
 )
 
-
 // TrustedSubnetOnly the client's IP address transmitted in the X-Real-IP request header is part of a trusted subnet
 func (h *Handler) TrustedSubnetOnly(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

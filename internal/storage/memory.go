@@ -5,6 +5,7 @@ import (
 	"errors"
 	"maps"
 	"slices"
+	"sync"
 
 	"github.com/Quickaxe-Martina/link_shortening_service/internal/config"
 )
@@ -16,6 +17,7 @@ type MemoryStorage struct {
 	Users        map[int]User
 	UseFile      bool
 	DataFilePath string
+	mu           sync.Mutex
 }
 
 // NewMemoryStorage creates new MemoryStorage
@@ -34,6 +36,8 @@ func NewMemoryStorage(cfg *config.Config, useFile bool) *MemoryStorage {
 
 // SaveURL save a URL by  code in memory
 func (m *MemoryStorage) SaveURL(ctx context.Context, u URL) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	m.Urls[u.Code] = u
 	return nil
 }
@@ -77,6 +81,8 @@ func (m *MemoryStorage) AllURLs(ctx context.Context) ([]URL, error) {
 
 // SaveBatchURL save list of URL
 func (m *MemoryStorage) SaveBatchURL(ctx context.Context, urls []URL) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	for _, url := range urls {
 		m.SaveURL(ctx, url)
 	}
@@ -85,6 +91,8 @@ func (m *MemoryStorage) SaveBatchURL(ctx context.Context, urls []URL) error {
 
 // CreateUser creates a new user and returns it
 func (m *MemoryStorage) CreateUser(ctx context.Context) (User, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	newID := len(m.Users) + 1
 	newUser := User{ID: newID}
 	m.Users[newID] = newUser
@@ -111,7 +119,6 @@ func (m *MemoryStorage) GetAllUsers(ctx context.Context) ([]User, error) {
 func (m *MemoryStorage) DeleteUserURLs(ctx context.Context, userID int, codes []string) error {
 	return ErrNotImplemented
 }
-
 
 // GetURLsCount returns URLs count
 func (m *MemoryStorage) GetURLsCount(ctx context.Context) (int, error) {

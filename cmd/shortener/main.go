@@ -15,6 +15,7 @@ import (
 	"github.com/Quickaxe-Martina/link_shortening_service/internal/handler"
 	"github.com/Quickaxe-Martina/link_shortening_service/internal/logger"
 	"github.com/Quickaxe-Martina/link_shortening_service/internal/repository"
+	"github.com/Quickaxe-Martina/link_shortening_service/internal/service"
 	"github.com/Quickaxe-Martina/link_shortening_service/internal/storage"
 	"github.com/Quickaxe-Martina/link_shortening_service/internal/tools"
 	"github.com/go-chi/chi/v5"
@@ -27,9 +28,9 @@ var (
 	buildCommit  string
 )
 
-func setupRouter(cfg *config.Config, store storage.Storage, deleteWorker *repository.DeleteURLsWorkers, audit *repository.AuditPublisher) *chi.Mux {
+func setupRouter(cfg *config.Config, store storage.Storage, deleteWorker *repository.DeleteURLsWorkers, audit *repository.AuditPublisher, shortener *service.ShortenerService) *chi.Mux {
 	r := chi.NewRouter()
-	h := handler.NewHandler(cfg, store, deleteWorker, audit)
+	h := handler.NewHandler(cfg, store, deleteWorker, audit, shortener)
 
 	r.Use(logger.RequestLogger)
 	r.Use(handler.GzipMiddleware)
@@ -124,7 +125,9 @@ func main() {
 
 	audit := setupAudit(cfg)
 
-	r := setupRouter(cfg, store, deleteWorker, audit)
+	shortener := service.NewShortenerService(store, cfg, audit)
+
+	r := setupRouter(cfg, store, deleteWorker, audit, shortener)
 
 	httpServer, pprofServer := tools.SetupServers(mainCtx, cfg, r)
 

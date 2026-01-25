@@ -10,7 +10,6 @@ import (
 	"go.uber.org/zap"
 )
 
-
 // StatsResponse response
 type StatsResponse struct {
 	URLs  int `json:"urls"`

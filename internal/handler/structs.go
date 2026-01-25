@@ -6,6 +6,7 @@ package handler
 import (
 	"github.com/Quickaxe-Martina/link_shortening_service/internal/config"
 	"github.com/Quickaxe-Martina/link_shortening_service/internal/repository"
+	"github.com/Quickaxe-Martina/link_shortening_service/internal/service"
 	"github.com/Quickaxe-Martina/link_shortening_service/internal/storage"
 )
 
@@ -16,14 +17,16 @@ type Handler struct {
 	store        storage.Storage
 	deleteWorker *repository.DeleteURLsWorkers
 	audit        *repository.AuditPublisher
+	shortener    *service.ShortenerService
 }
 
 // NewHandler create Handler
-func NewHandler(cfg *config.Config, store storage.Storage, deleteWorker *repository.DeleteURLsWorkers, audit *repository.AuditPublisher) *Handler {
+func NewHandler(cfg *config.Config, store storage.Storage, deleteWorker *repository.DeleteURLsWorkers, audit *repository.AuditPublisher, shortener *service.ShortenerService) *Handler {
 	return &Handler{
 		cfg:          cfg,
 		store:        store,
 		deleteWorker: deleteWorker,
 		audit:        audit,
+		shortener:    shortener,
 	}
 }

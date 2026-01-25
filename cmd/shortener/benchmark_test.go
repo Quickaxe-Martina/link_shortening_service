@@ -30,7 +30,8 @@ func setupBenchServer(b *testing.B) (*resty.Client, *httptest.Server) {
 
 	deleteWorker := repository.NewDeleteURLsWorkers(storageData, 3, 2*time.Second, 50)
 	audit := repository.NewAuditPublisher(100)
-	router := setupRouter(cfg, storageData, deleteWorker, audit)
+	shortener := service.NewShortenerService(storageData, cfg, audit)
+	router := setupRouter(cfg, storageData, deleteWorker, audit, shortener)
 	srv := httptest.NewServer(router)
 
 	client := resty.New()

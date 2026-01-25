@@ -14,6 +14,7 @@ import (
 	"github.com/Quickaxe-Martina/link_shortening_service/internal/config"
 	"github.com/Quickaxe-Martina/link_shortening_service/internal/model"
 	"github.com/Quickaxe-Martina/link_shortening_service/internal/repository"
+	"github.com/Quickaxe-Martina/link_shortening_service/internal/service"
 	"github.com/Quickaxe-Martina/link_shortening_service/internal/storage"
 	"github.com/go-resty/resty/v2"
 	"github.com/stretchr/testify/assert"
@@ -33,7 +34,8 @@ func setupTestServer() (*resty.Client, *httptest.Server, *config.Config) {
 
 	deleteWorker := repository.NewDeleteURLsWorkers(storageData, 3, 2*time.Second, 50)
 	audit := repository.NewAuditPublisher(100)
-	router := setupRouter(cfg, storageData, deleteWorker, audit)
+	shortener := service.NewShortenerService(storageData, cfg, audit)
+	router := setupRouter(cfg, storageData, deleteWorker, audit, shortener)
 	srv := httptest.NewServer(router)
 
 	client := resty.New()
