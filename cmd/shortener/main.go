@@ -18,6 +18,7 @@ import (
 	"github.com/Quickaxe-Martina/link_shortening_service/internal/service"
 	"github.com/Quickaxe-Martina/link_shortening_service/internal/storage"
 	"github.com/Quickaxe-Martina/link_shortening_service/internal/tools"
+
 	"github.com/go-chi/chi/v5"
 	"go.uber.org/zap"
 )
@@ -131,5 +132,5 @@ func main() {
 
 	httpServer, pprofServer := tools.SetupServers(mainCtx, cfg, r)
 
-	tools.RunServers(mainCtx, cfg, httpServer, pprofServer, store, deleteWorker, audit)
+	tools.RunServers(mainCtx, cfg, httpServer, pprofServer, store, deleteWorker, audit, shortener)
 }

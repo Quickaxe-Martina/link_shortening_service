@@ -22,6 +22,7 @@ type Config struct {
 	ShutdownTimeout    int      `env:"SHUTDOWN_TIMEOUT" json:"shutdown_timeout"`
 	HostWhitelist      []string `env:"HOST_WHITELIST" envSeparator:"," json:"host_whitelist"`
 	TrustedSubnet      string   `env:"TRUSTED_SUBNET" json:"trusted_subnet"`
+	GRPCAddr           string   `env:"GRPC_ADDR" json:"grpc_addr"`
 }
 
 // NewConfig create Config
@@ -43,6 +44,7 @@ func NewConfig() *Config {
 		ShutdownTimeout:    10,
 		HostWhitelist:      nil,
 		TrustedSubnet:      "",
+		GRPCAddr:           "",
 	}
 	LoadConfigFile(&cfg)
 	ParseFlags(&cfg)
