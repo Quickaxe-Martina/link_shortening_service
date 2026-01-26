@@ -191,3 +191,33 @@ func (store *PostgresStorage) DeleteUserURLs(ctx context.Context, userID int, co
 	_, err := store.DB.ExecContext(ctx, query, userID, pq.Array(codes))
 	return err
 }
+
+// GetURLsCount returns URLs count
+func (store *PostgresStorage) GetURLsCount(ctx context.Context) (int, error) {
+	row := store.DB.QueryRowContext(ctx, "SELECT COUNT(*) FROM urls WHERE is_deleted = false")
+
+	var count int
+	if err := row.Scan(&count); err != nil {
+		if err == sql.ErrNoRows {
+			return 0, nil
+		}
+		return 0, err
+	}
+
+	return count, nil
+}
+
+// GetUsersCount returns users count
+func (store *PostgresStorage) GetUsersCount(ctx context.Context) (int, error) {
+	row := store.DB.QueryRowContext(ctx, "SELECT COUNT(*) FROM users")
+
+	var count int
+	if err := row.Scan(&count); err != nil {
+		if err == sql.ErrNoRows {
+			return 0, nil
+		}
+		return 0, err
+	}
+
+	return count, nil
+}

@@ -22,7 +22,7 @@ func (c *Config) Reset() {
 
 	c.TokenExp = 0
 
-	c.DeleteBachSize = 0
+	c.DeleteBatchSize = 0
 
 	c.DeleteTimeDuration = 0
 

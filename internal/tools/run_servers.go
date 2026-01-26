@@ -6,8 +6,10 @@ import (
 	"time"
 
 	"github.com/Quickaxe-Martina/link_shortening_service/internal/config"
+	"github.com/Quickaxe-Martina/link_shortening_service/internal/grpcserver"
 	"github.com/Quickaxe-Martina/link_shortening_service/internal/logger"
 	"github.com/Quickaxe-Martina/link_shortening_service/internal/repository"
+	"github.com/Quickaxe-Martina/link_shortening_service/internal/service"
 	"github.com/Quickaxe-Martina/link_shortening_service/internal/storage"
 	"go.uber.org/zap"
 	"golang.org/x/sync/errgroup"
@@ -47,13 +49,20 @@ func RunServers(
 	store storage.Storage,
 	deleteWorker *repository.DeleteURLsWorkers,
 	audit *repository.AuditPublisher,
+	shortener *service.ShortenerService,
 ) {
 	g, gCtx := errgroup.WithContext(ctx)
 
 	g.Go(func() error {
-		logger.Log.Info("HTTP server started", zap.String("addr", httpServer.Addr))
-		if err := httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			return err
+		logger.Log.Info("HTTP server started", zap.String("addr", cfg.RunAddr))
+		if cfg.UseTLS {
+			if err := httpServer.ListenAndServeTLS("", ""); err != nil && err != http.ErrServerClosed {
+				return err
+			}
+		} else {
+			if err := httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+				return err
+			}
 		}
 		return nil
 	})
@@ -65,6 +74,15 @@ func RunServers(
 		}
 		return nil
 	}()
+
+	g.Go(func() error {
+		logger.Log.Info("gRPC server starting", zap.String("addr", cfg.GRPCAddr))
+		if err := grpcserver.RunGRPCServer(gCtx, shortener, cfg, store); err != nil {
+			logger.Log.Error("gRPC server error", zap.Error(err))
+			return err
+		}
+		return nil
+	})
 
 	g.Go(func() error {
 		<-gCtx.Done()

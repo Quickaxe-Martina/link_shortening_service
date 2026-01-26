@@ -44,12 +44,14 @@ type URLStorage interface {
 	AllURLs(ctx context.Context) ([]URL, error)
 	SaveBatchURL(ctx context.Context, urls []URL) error
 	DeleteUserURLs(ctx context.Context, userID int, codes []string) error
+	GetURLsCount(ctx context.Context) (int, error)
 }
 
 // UserStorage defines methods for user management
 type UserStorage interface {
 	CreateUser(ctx context.Context) (User, error)
 	GetAllUsers(ctx context.Context) ([]User, error)
+	GetUsersCount(ctx context.Context) (int, error)
 }
 
 // Storage defines methods

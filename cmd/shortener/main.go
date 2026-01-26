@@ -4,8 +4,6 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"net"
-	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
@@ -17,8 +15,10 @@ import (
 	"github.com/Quickaxe-Martina/link_shortening_service/internal/handler"
 	"github.com/Quickaxe-Martina/link_shortening_service/internal/logger"
 	"github.com/Quickaxe-Martina/link_shortening_service/internal/repository"
+	"github.com/Quickaxe-Martina/link_shortening_service/internal/service"
 	"github.com/Quickaxe-Martina/link_shortening_service/internal/storage"
 	"github.com/Quickaxe-Martina/link_shortening_service/internal/tools"
+
 	"github.com/go-chi/chi/v5"
 	"go.uber.org/zap"
 )
@@ -29,9 +29,9 @@ var (
 	buildCommit  string
 )
 
-func setupRouter(cfg *config.Config, store storage.Storage, deleteWorker *repository.DeleteURLsWorkers, audit *repository.AuditPublisher) *chi.Mux {
+func setupRouter(cfg *config.Config, store storage.Storage, deleteWorker *repository.DeleteURLsWorkers, audit *repository.AuditPublisher, shortener *service.ShortenerService) *chi.Mux {
 	r := chi.NewRouter()
-	h := handler.NewHandler(cfg, store, deleteWorker, audit)
+	h := handler.NewHandler(cfg, store, deleteWorker, audit, shortener)
 
 	r.Use(logger.RequestLogger)
 	r.Use(handler.GzipMiddleware)
@@ -49,6 +49,10 @@ func setupRouter(cfg *config.Config, store storage.Storage, deleteWorker *reposi
 	})
 	r.Route("/ping", func(r chi.Router) {
 		r.Get("/", h.Ping)
+	})
+	r.Route("/api/internal", func(r chi.Router) {
+		r.Use(h.TrustedSubnetOnly)
+		r.Get("/stats", h.InternalStats)
 	})
 	return r
 }
@@ -80,6 +84,7 @@ func setupSignalContext() (context.Context, context.CancelFunc) {
 		os.Interrupt,
 		syscall.SIGTERM,
 		syscall.SIGQUIT,
+		syscall.SIGINT,
 	)
 }
 
@@ -116,27 +121,16 @@ func main() {
 		store,
 		3,
 		time.Duration(cfg.DeleteTimeDuration),
-		cfg.DeleteBachSize,
+		cfg.DeleteBatchSize,
 	)
 
 	audit := setupAudit(cfg)
 
-	r := setupRouter(cfg, store, deleteWorker, audit)
+	shortener := service.NewShortenerService(store, cfg, audit)
 
-	httpServer := &http.Server{
-		Addr:    cfg.RunAddr,
-		Handler: r,
-		BaseContext: func(_ net.Listener) context.Context {
-			return mainCtx
-		},
-	}
+	r := setupRouter(cfg, store, deleteWorker, audit, shortener)
 
-	pprofServer := &http.Server{
-		Addr: "localhost:6060",
-		BaseContext: func(_ net.Listener) context.Context {
-			return mainCtx
-		},
-	}
+	httpServer, pprofServer := tools.SetupServers(mainCtx, cfg, r)
 
-	tools.RunServers(mainCtx, cfg, httpServer, pprofServer, store, deleteWorker, audit)
+	tools.RunServers(mainCtx, cfg, httpServer, pprofServer, store, deleteWorker, audit, shortener)
 }
