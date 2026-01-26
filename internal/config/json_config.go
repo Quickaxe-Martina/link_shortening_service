@@ -2,27 +2,21 @@ package config
 
 import (
 	"encoding/json"
-	"flag"
 	"fmt"
 	"os"
 )
 
 // LoadConfigFile reads a JSON configuration file
 func LoadConfigFile(cfg *Config) {
-	var configPath string
-	flag.StringVar(&configPath, "c", "", "config file path")
-	flag.StringVar(&configPath, "config", "", "config file path")
-	flag.Parse()
-
-	if configPath == "" {
-		configPath = os.Getenv("CONFIG")
+	if cfg.ConfigPath == "" {
+		cfg.ConfigPath = os.Getenv("CONFIG")
 	}
 
-	if configPath == "" {
+	if cfg.ConfigPath == "" {
 		return
 	}
 
-	file, err := os.Open(configPath)
+	file, err := os.Open(cfg.ConfigPath)
 	if err != nil {
 		fmt.Printf("cannot open config file: %v\n", err)
 		return

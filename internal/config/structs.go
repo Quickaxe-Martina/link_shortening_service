@@ -14,7 +14,7 @@ type Config struct {
 	DevMode            bool     `env:"DEV_MODE" json:"dev_mode"`
 	SecretKey          string   `env:"SECRET_KEY" json:"secret_key"`
 	TokenExp           int      `env:"TOKEN_EXP" json:"token_exp"`
-	DeleteBatchSize    int      `env:"DELETE_BACH_SIZE" json:"delete_bach_size"`
+	DeleteBatchSize    int      `env:"DELETE_BATCH_SIZE" json:"delete_batch_size"`
 	DeleteTimeDuration int      `env:"DELETE_TIME_DURATION" json:"delete_time_duration"`
 	AuditFile          string   `env:"AUDIT_FILE" json:"audit_file"`
 	AuditURL           string   `env:"AUDIT_URL" json:"audit_url"`
@@ -23,6 +23,7 @@ type Config struct {
 	HostWhitelist      []string `env:"HOST_WHITELIST" envSeparator:"," json:"host_whitelist"`
 	TrustedSubnet      string   `env:"TRUSTED_SUBNET" json:"trusted_subnet"`
 	GRPCAddr           string   `env:"GRPC_ADDR" json:"grpc_addr"`
+	ConfigPath         string
 }
 
 // NewConfig create Config
@@ -46,8 +47,8 @@ func NewConfig() *Config {
 		TrustedSubnet:      "",
 		GRPCAddr:           "",
 	}
-	LoadConfigFile(&cfg)
 	ParseFlags(&cfg)
+	LoadConfigFile(&cfg)
 	LoadEnv(&cfg)
 	return &cfg
 }

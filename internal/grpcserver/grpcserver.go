@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"time"
 
 	"github.com/Quickaxe-Martina/link_shortening_service/internal/auth"
 	"github.com/Quickaxe-Martina/link_shortening_service/internal/config"
@@ -12,7 +13,6 @@ import (
 	"github.com/Quickaxe-Martina/link_shortening_service/internal/service"
 	"github.com/Quickaxe-Martina/link_shortening_service/internal/storage"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/reflection"
 	"google.golang.org/protobuf/types/known/emptypb"
 )
@@ -20,46 +20,17 @@ import (
 type GRPCServer struct {
 	pb.UnimplementedShortenerServiceServer
 	service *service.ShortenerService
-	storage *storage.Storage
+	storage storage.Storage
 	cfg     *config.Config
 }
 
-var ErrNoAuthHeader = errors.New("no authorization header")
-
-func NewGRPCServer(svc *service.ShortenerService, cfg *config.Config, storage *storage.Storage) *GRPCServer {
+func NewGRPCServer(svc *service.ShortenerService, cfg *config.Config, storage storage.Storage) *GRPCServer {
 	return &GRPCServer{service: svc, cfg: cfg, storage: storage}
 }
 
-func GetUserFromGRPCMetadata(ctx context.Context, store storage.Storage, secretKey string, tokenExpHours int) (storage.User, error) {
-	md, ok := metadata.FromIncomingContext(ctx)
-	if !ok {
-		return storage.User{}, ErrNoAuthHeader
-	}
-
-	authHeaders := md.Get("authorization")
-	if len(authHeaders) == 0 {
-		return storage.User{}, ErrNoAuthHeader
-	}
-
-	token := authHeaders[0]
-	if len(token) > 7 && token[:7] == "Bearer " {
-		token = token[7:]
-	}
-
-	userID := auth.GetUserID(token, secretKey)
-	if userID == -1 {
-		user, err := store.CreateUser(ctx)
-		if err != nil {
-			return storage.User{}, err
-		}
-		return user, nil
-	}
-
-	return storage.User{ID: userID}, nil
-}
-
 func (s *GRPCServer) ShortenURL(ctx context.Context, req *pb.URLShortenRequest) (*pb.URLShortenResponse, error) {
-	user, err := GetUserFromGRPCMetadata(ctx, *s.storage, s.cfg.SecretKey, s.cfg.TokenExp)
+	tokenExp := time.Hour * time.Duration(s.cfg.TokenExp)
+	user, err := auth.GetOrCreateUserFromGRPCContext(ctx, s.storage, s.cfg.SecretKey, tokenExp)
 	if err != nil {
 		return nil, err
 	}
@@ -82,7 +53,8 @@ func (s *GRPCServer) ExpandURL(ctx context.Context, req *pb.URLExpandRequest) (*
 }
 
 func (s *GRPCServer) ListUserURLs(ctx context.Context, _ *emptypb.Empty) (*pb.UserURLsResponse, error) {
-	user, err := GetUserFromGRPCMetadata(ctx, *s.storage, s.cfg.SecretKey, s.cfg.TokenExp)
+	tokenExp := time.Hour * time.Duration(s.cfg.TokenExp)
+	user, err := auth.GetOrCreateUserFromGRPCContext(ctx, s.storage, s.cfg.SecretKey, tokenExp)
 	if err != nil {
 		return nil, err
 	}
@@ -103,7 +75,7 @@ func (s *GRPCServer) ListUserURLs(ctx context.Context, _ *emptypb.Empty) (*pb.Us
 	return resp, nil
 }
 
-func RunGRPCServer(ctx context.Context, svc *service.ShortenerService, cfg *config.Config, storage *storage.Storage) error {
+func RunGRPCServer(ctx context.Context, svc *service.ShortenerService, cfg *config.Config, storage storage.Storage) error {
 	lis, err := net.Listen("tcp", cfg.GRPCAddr)
 	if err != nil {
 		return fmt.Errorf("failed to listen: %w", err)

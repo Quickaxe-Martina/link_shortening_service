@@ -77,7 +77,7 @@ func RunServers(
 
 	g.Go(func() error {
 		logger.Log.Info("gRPC server starting", zap.String("addr", cfg.GRPCAddr))
-		if err := grpcserver.RunGRPCServer(gCtx, shortener, cfg, &store); err != nil {
+		if err := grpcserver.RunGRPCServer(gCtx, shortener, cfg, store); err != nil {
 			logger.Log.Error("gRPC server error", zap.Error(err))
 			return err
 		}
